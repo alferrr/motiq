@@ -1,42 +1,31 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
-import { use, useState } from "react";
+import { useState } from "react";
 import LineWaves from "@/components/LineWaves";
 import Button from "@/components/ui/Button";
 
-import z from "zod";
 import axios from "axios";
-import {
-  RegisterFormSchema,
-  RegisterFormType,
-  LoginFormType,
-  LoginSchema,
-} from "@/schemas/auth.schema";
-
+import { LoginSchema, LoginFormType } from "@/schemas/auth.schema";
 import { useRouter } from "next/navigation";
+import z from "zod";
+
+type CompanyFormType = { companyId: string };
 
 export default function Page() {
-  const [select, setSelected] = useState<"login" | "register">("login");
+  const [step, setStep] = useState<"company" | "staff">("company");
   const [loading, setLoading] = useState(false);
+
+  const [companyForm, setCompanyForm] = useState<CompanyFormType>({
+    companyId: "",
+  });
+  const [companyName, setCompanyName] = useState("");
+  const [companyError, setCompanyError] = useState("");
 
   const [loginForm, setLoginForm] = useState<LoginFormType>({
     email: "",
     password: "",
   });
-
-  const [form, setForm] = useState<RegisterFormType>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<keyof RegisterFormType, string>>
-  >({});
   const [loginErrors, setLoginErrors] = useState<
     Partial<Record<keyof LoginFormType, string>>
   >({});
@@ -44,39 +33,26 @@ export default function Page() {
 
   const router = useRouter();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
-  };
+  // verify company
+  const handleCompanySubmit = async () => {
+    setCompanyError("");
 
-  const handleRegister = async () => {
-    setServerError("");
-    setFieldErrors({});
-
-    const result = RegisterFormSchema.safeParse(form);
-    if (!result.success) {
-      const flattened = result.error.flatten().fieldErrors;
-      const errors: Partial<Record<keyof RegisterFormType, string>> = {};
-
-      (Object.keys(flattened) as Array<keyof RegisterFormType>).forEach(
-        (field) => {
-          const messages = flattened[field];
-          if (messages?.[0]) errors[field] = messages[0];
-        },
-      );
-
-      setFieldErrors(errors);
+    if (!companyForm.companyId.trim()) {
+      setCompanyError("Company ID is required");
       return;
     }
 
     setLoading(true);
     try {
-      const { confirmPassword, ...payload } = result.data;
-      await axios.post("/api/v1/auth/register", payload);
-      setSelected("login");
+      const res = await axios.post("/api/v1/auth/verify-company", {
+        companyId: companyForm.companyId,
+      });
+      setCompanyName(res.data.name ?? "");
+      setStep("staff");
     } catch (err: any) {
-      setServerError(err.response?.data?.error ?? "Registration failed.");
+      setCompanyError(
+        err.response?.data?.error ?? "Company not found. Check your ID.",
+      );
     } finally {
       setLoading(false);
     }
@@ -85,7 +61,7 @@ export default function Page() {
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginForm((prev) => ({ ...prev, [name]: value }));
-    setLoginErrors((prev: any) => ({ ...prev, [name]: undefined }));
+    setLoginErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
   const handleLogin = async () => {
@@ -107,8 +83,10 @@ export default function Page() {
 
     setLoading(true);
     try {
-      await axios.post("/api/v1/auth/login", result.data);
-      // redirect after login
+      await axios.post("/api/v1/auth/login", {
+        ...result.data,
+        companyId: companyForm.companyId,
+      });
       router.push("/dashboard");
     } catch (err: any) {
       setServerError(err.response?.data?.error ?? "Login failed.");
@@ -116,6 +94,9 @@ export default function Page() {
       setLoading(false);
     }
   };
+
+  const inputCls =
+    "w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 font-light bg-transparent focus:outline-none focus:border-blue-600 transition-colors";
 
   return (
     <div className="relative flex flex-row-reverse h-screen overflow-hidden bg-black">
@@ -139,179 +120,160 @@ export default function Page() {
       <div className="w-screen h-screen md:w-[50%] relative rounded-br-4xl rounded-tr-4xl text-white p-8 px-6 lg:px-24 flex flex-col gap-6 justify-center bg-black z-10">
         <h1 className="font-heading font-light text-lg">Motiq</h1>
 
-        <div className="flex flex-col gap-2 font-sans font-normal text-sm">
-          <p className="text-5xl">
-            {select === "login" ? "Welcome Back!" : "Get Started!"}
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+              step === "company"
+                ? "bg-blue-700 text-white"
+                : "bg-blue-700/30 text-blue-400"
+            }`}
+          >
+            {step === "staff" ? (
+              <svg
+                viewBox="0 0 12 12"
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="2,6 5,9 10,3" />
+              </svg>
+            ) : (
+              "1"
+            )}
+          </div>
+          <div
+            className={`h-px flex-1 transition-colors ${step === "staff" ? "bg-blue-700/60" : "bg-white/10"}`}
+          />
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+              step === "staff"
+                ? "bg-blue-700 text-white"
+                : "bg-white/10 text-white/30"
+            }`}
+          >
+            2
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-4xl font-light leading-tight">
+            {step === "company" ? (
+              "Enter your Company ID"
+            ) : (
+              <>
+                Welcome,{" "}
+                <span className="text-blue-500">{companyName || "team"}</span>
+              </>
+            )}
           </p>
-          <p className="font-light">
-            {select === "login"
-              ? "We are happy to see you again."
-              : "Fill up your details to continue."}
+          <p className="font-light text-white/50 text-sm">
+            {step === "company"
+              ? "Your garage admin provides this ID."
+              : "Sign in with your staff credentials."}
           </p>
         </div>
 
-        <div className="flex gap-2 border rounded-4xl border-white/10 p-1">
-          <button
-            className={`w-[50%] rounded-full py-3 cursor-pointer ${select === "login" ? "bg-blue-700" : ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              setSelected("login");
-            }}
-          >
-            Sign In
-          </button>
-          <button
-            className={`w-[50%] rounded-full py-3 cursor-pointer ${select === "register" ? "bg-blue-700" : ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              setSelected("register");
-            }}
-          >
-            Sign Up
-          </button>
-        </div>
-
-        <form action="">
-          {select === "login" ? (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <p className="font-sans font-light ml-4">Email</p>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="alfzmercado240@gmail.com"
-                  onChange={handleLoginChange}
-                  value={loginForm.email}
-                  className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 fo:border-blue-700 font-light bg-transparent"
-                />
-                {loginErrors.email && (
-                  <p className="text-red-400 text-xs ml-4">
-                    {loginErrors.email}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <p className="font-sans font-light ml-4">Password</p>
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="••••••••"
-                  value={loginForm.password}
-                  onChange={handleLoginChange}
-                  className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 active:border-blue-700 font-light bg-transparent"
-                />
-                {loginErrors.password && (
-                  <p className="text-red-400 text-xs ml-4">
-                    {loginErrors.password}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center justify-between w-full">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox id="remember" />
-                  <span className="text-sm text-white/80">Remember Me</span>
-                </label>
-                <Link href="/forgot" className="text-blue-700 text-sm">
-                  Forgot Password?
-                </Link>
-              </div>
+        {/* step 1 */}
+        {step === "company" && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="font-sans font-light ml-4 text-sm">Company ID</p>
+              <input
+                type="text"
+                placeholder="e.g. 10042"
+                value={companyForm.companyId}
+                onChange={(e) => {
+                  setCompanyForm({ companyId: e.target.value });
+                  setCompanyError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleCompanySubmit()}
+                className={inputCls}
+              />
+              {companyError && (
+                <p className="text-red-400 text-xs ml-4">{companyError}</p>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col gap-4 w-full">
-              <div className="flex gap-4 items-center w-full">
-                <div className="flex flex-col gap-2 w-[50%]">
-                  <p className="font-sans font-light ml-4">First Name</p>
-                  <input
-                    type="text"
-                    placeholder="Alfer"
-                    name="firstName"
-                    value={form.firstName}
-                    onChange={handleChange}
-                    className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 active:border-blue-700 font-light bg-transparent"
-                  />
-                  {fieldErrors.firstName && (
-                    <p className="text-red-400 text-xs ml-4">
-                      {fieldErrors.firstName}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2 w-[50%]">
-                  <p className="font-sans font-light ml-4">Last Name</p>
-                  <input
-                    type="text"
-                    placeholder="Mercado"
-                    name="lastName"
-                    value={form.lastName}
-                    onChange={handleChange}
-                    className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 active:border-blue-700 font-light bg-transparent"
-                  />
-                  {fieldErrors.lastName && (
-                    <p className="text-red-400 text-xs ml-4">
-                      {fieldErrors.lastName}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="font-sans font-light ml-4">Email</p>
-                <input
-                  type="email"
-                  placeholder="alfzmercado240@gmail.com"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 active:border-blue-700 font-light bg-transparent"
-                />
-                {fieldErrors.email && (
-                  <p className="text-red-400 text-xs ml-4">
-                    {fieldErrors.email}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="font-sans font-light ml-4">Password</p>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 active:border-blue-700 font-light bg-transparent"
-                />
-                {fieldErrors.password && (
-                  <p className="text-red-400 text-xs ml-4">
-                    {fieldErrors.password}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="font-sans font-light ml-4">Confirm Password</p>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  name="confirmPassword"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full rounded-full border border-white/10 text-lg text-white p-2 px-6 active:border-blue-700 font-light bg-transparent"
-                />
-                {fieldErrors.confirmPassword && (
-                  <p className="text-red-400 text-xs ml-4">
-                    {fieldErrors.confirmPassword}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </form>
-
-        {serverError && (
-          <p className="text-red-400 text-sm text-center">{serverError}</p>
+            <Button
+              text={loading ? "Verifying…" : "Continue"}
+              onClick={handleCompanySubmit}
+            />
+          </div>
         )}
-        <Button
-          text={select === "login" ? "Continue" : "Sign Up"}
-          onClick={select === "login" ? handleLogin : handleRegister}
-        />
+
+        {/* step 2 */}
+        {step === "staff" && (
+          <div className="flex flex-col gap-4">
+            <button
+              onClick={() => {
+                setStep("company");
+                setServerError("");
+                setLoginErrors({});
+                setLoginForm({ email: "", password: "" });
+              }}
+              className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors w-fit -mt-2"
+            >
+              <svg
+                viewBox="0 0 12 12"
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="8,2 4,6 8,10" />
+              </svg>
+              Change company
+            </button>
+
+            <div className="flex flex-col gap-2">
+              <p className="font-sans font-light ml-4 text-sm">Email</p>
+              <input
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                onChange={handleLoginChange}
+                value={loginForm.email}
+                className={inputCls}
+              />
+              {loginErrors.email && (
+                <p className="text-red-400 text-xs ml-4">{loginErrors.email}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="font-sans font-light ml-4 text-sm">Password</p>
+              <input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={loginForm.password}
+                onChange={handleLoginChange}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                className={inputCls}
+              />
+              {loginErrors.password && (
+                <p className="text-red-400 text-xs ml-4">
+                  {loginErrors.password}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end w-full">
+              <Link href="/forgot" className="text-blue-700 text-sm">
+                Forgot Password?
+              </Link>
+            </div>
+
+            {serverError && (
+              <p className="text-red-400 text-sm text-center">{serverError}</p>
+            )}
+
+            <Button
+              text={loading ? "Signing in…" : "Sign In"}
+              onClick={handleLogin}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
