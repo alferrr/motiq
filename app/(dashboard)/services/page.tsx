@@ -661,7 +661,7 @@ export default function ServicesPage() {
                         )}
                       </td>
                       <td
-                        className={`px-5 py-3 ${muted} hidden md:table-cell max-w-[220px] truncate`}
+                        className={`px-5 py-3 ${muted} hidden md:table-cell max-w-55 truncate`}
                       >
                         {s.Description || "—"}
                       </td>
