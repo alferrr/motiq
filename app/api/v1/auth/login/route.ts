@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { LoginSchema } from "@/schemas/auth.schema";
 
 const BodySchema = LoginSchema.extend({
-  companyId: z.coerce.number({ error: "Company ID is required" }),
+  companyId: z.string().min(1, "Company ID is required"),
 });
 
 export async function POST(request: NextRequest) {
@@ -15,6 +15,18 @@ export async function POST(request: NextRequest) {
       await request.json(),
     );
 
+    // verify company exists and grab theme color
+    const [companies]: any = await pool.query(
+      "SELECT Company_ID, Name, ThemeColor FROM Company WHERE Company_ID = ? LIMIT 1",
+      [companyId],
+    );
+    if (companies.length === 0) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    }
+
+    const { Name: companyNameVal, ThemeColor } = companies[0];
+
+    // find user scoped to company
     const [rows]: any = await pool.query(
       `SELECT User_ID, FullName, Email, Password, Role, Company_ID
        FROM User
@@ -46,6 +58,8 @@ export async function POST(request: NextRequest) {
         email: user.Email,
         role: user.Role,
         companyId: user.Company_ID,
+        companyName: companyNameVal,
+        themeColor: ThemeColor,
       },
       process.env.JWT_SECRET!,
       { expiresIn: "7d" },
@@ -60,6 +74,8 @@ export async function POST(request: NextRequest) {
           email: user.Email,
           role: user.Role,
           companyId: user.Company_ID,
+          companyName: companyNameVal,
+          themeColor: ThemeColor,
         },
       },
       { status: 200 },
@@ -81,7 +97,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
     console.error(err);
     return NextResponse.json(
       { error: "Internal Server Error" },

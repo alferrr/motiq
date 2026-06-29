@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import axios from "axios";
 import { LoginSchema, LoginFormType } from "@/schemas/auth.schema";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/context/ThemeContext";
 import z from "zod";
 
 type CompanyFormType = { companyId: string };
@@ -19,7 +20,8 @@ export default function Page() {
   const [companyForm, setCompanyForm] = useState<CompanyFormType>({
     companyId: "",
   });
-  const [companyName, setCompanyName] = useState("");
+  const [companyName, setLocalCompanyName] = useState("");
+  const [companyColor, setCompanyColor] = useState("#2563eb");
   const [companyError, setCompanyError] = useState("");
 
   const [loginForm, setLoginForm] = useState<LoginFormType>({
@@ -31,9 +33,11 @@ export default function Page() {
   >({});
   const [serverError, setServerError] = useState("");
 
+  const { setPrimaryColor, setCompanyName, setUserName, setUserRole } =
+    useTheme();
   const router = useRouter();
 
-  // verify company
+  // ── Step 1: verify company ──────────────────────────────────────────────
   const handleCompanySubmit = async () => {
     setCompanyError("");
 
@@ -47,7 +51,8 @@ export default function Page() {
       const res = await axios.post("/api/v1/auth/verify-company", {
         companyId: companyForm.companyId,
       });
-      setCompanyName(res.data.name ?? "");
+      setLocalCompanyName(res.data.name ?? "");
+      setCompanyColor(res.data.themeColor ?? "#2563eb");
       setStep("staff");
     } catch (err: any) {
       setCompanyError(
@@ -58,6 +63,7 @@ export default function Page() {
     }
   };
 
+  // ── Step 2: staff login ─────────────────────────────────────────────────
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginForm((prev) => ({ ...prev, [name]: value }));
@@ -83,10 +89,14 @@ export default function Page() {
 
     setLoading(true);
     try {
-      await axios.post("/api/v1/auth/login", {
+      const res = await axios.post("/api/v1/auth/login", {
         ...result.data,
         companyId: companyForm.companyId,
       });
+      if (res.data.user?.themeColor) setPrimaryColor(res.data.user.themeColor);
+      if (res.data.user?.companyName) setCompanyName(res.data.user.companyName);
+      if (res.data.user?.fullName) setUserName(res.data.user.fullName);
+      if (res.data.user?.role) setUserRole(res.data.user.role);
       router.push("/dashboard");
     } catch (err: any) {
       setServerError(err.response?.data?.error ?? "Login failed.");
@@ -100,6 +110,7 @@ export default function Page() {
 
   return (
     <div className="relative flex flex-row-reverse h-screen overflow-hidden bg-black">
+      {/* decorative side */}
       <div className="hidden md:w-[50%] md:block">
         <LineWaves
           speed={0.3}
@@ -112,21 +123,24 @@ export default function Page() {
           brightness={0.2}
           color1="#0F172A"
           color2="#1E3A8A"
-          color3="#2563EB"
+          color3={companyColor}
           mouseInfluence={2}
         />
       </div>
 
+      {/* form side */}
       <div className="w-screen h-screen md:w-[50%] relative rounded-br-4xl rounded-tr-4xl text-white p-8 px-6 lg:px-24 flex flex-col gap-6 justify-center bg-black z-10">
         <h1 className="font-heading font-light text-lg">Motiq</h1>
 
+        {/* step indicator */}
         <div className="flex items-center gap-3">
           <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors"
+            style={
               step === "company"
-                ? "bg-blue-700 text-white"
-                : "bg-blue-700/30 text-blue-400"
-            }`}
+                ? { backgroundColor: companyColor, color: "#fff" }
+                : { backgroundColor: companyColor + "4d", color: companyColor }
+            }
           >
             {step === "staff" ? (
               <svg
@@ -143,19 +157,25 @@ export default function Page() {
             )}
           </div>
           <div
-            className={`h-px flex-1 transition-colors ${step === "staff" ? "bg-blue-700/60" : "bg-white/10"}`}
+            className="h-px flex-1 transition-colors"
+            style={{
+              backgroundColor:
+                step === "staff" ? companyColor + "99" : "#ffffff1a",
+            }}
           />
           <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors"
+            style={
               step === "staff"
-                ? "bg-blue-700 text-white"
-                : "bg-white/10 text-white/30"
-            }`}
+                ? { backgroundColor: companyColor, color: "#fff" }
+                : { backgroundColor: "#ffffff0d", color: "#ffffff30" }
+            }
           >
             2
           </div>
         </div>
 
+        {/* heading */}
         <div className="flex flex-col gap-2">
           <p className="text-4xl font-light leading-tight">
             {step === "company" ? (
@@ -163,7 +183,9 @@ export default function Page() {
             ) : (
               <>
                 Welcome,{" "}
-                <span className="text-blue-500">{companyName || "team"}</span>
+                <span style={{ color: companyColor }}>
+                  {companyName || "team"}
+                </span>
               </>
             )}
           </p>
@@ -181,7 +203,7 @@ export default function Page() {
               <p className="font-sans font-light ml-4 text-sm">Company ID</p>
               <input
                 type="text"
-                placeholder="e.g. 10042"
+                placeholder="e.g. MERCADOAUTO-A3F7K2PQ"
                 value={companyForm.companyId}
                 onChange={(e) => {
                   setCompanyForm({ companyId: e.target.value });
@@ -197,6 +219,7 @@ export default function Page() {
             <Button
               text={loading ? "Verifying…" : "Continue"}
               onClick={handleCompanySubmit}
+              style={{ backgroundColor: companyColor }}
             />
           </div>
         )}
@@ -210,6 +233,8 @@ export default function Page() {
                 setServerError("");
                 setLoginErrors({});
                 setLoginForm({ email: "", password: "" });
+                setLocalCompanyName("");
+                setCompanyColor("#2563eb");
               }}
               className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors w-fit -mt-2"
             >
@@ -259,7 +284,11 @@ export default function Page() {
             </div>
 
             <div className="flex items-center justify-end w-full">
-              <Link href="/forgot" className="text-blue-700 text-sm">
+              <Link
+                href="/forgot"
+                className="text-sm transition-colors"
+                style={{ color: companyColor }}
+              >
                 Forgot Password?
               </Link>
             </div>
@@ -271,6 +300,7 @@ export default function Page() {
             <Button
               text={loading ? "Signing in…" : "Sign In"}
               onClick={handleLogin}
+              style={{ backgroundColor: companyColor }}
             />
           </div>
         )}

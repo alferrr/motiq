@@ -3,7 +3,7 @@ import { pool } from "@/lib/db";
 import { z } from "zod";
 
 const BodySchema = z.object({
-  companyId: z.coerce.number({ error: "Company ID is required" }),
+  companyId: z.string().min(1, { message: "Company ID is required" }),
 });
 
 export async function POST(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const { companyId } = BodySchema.parse(await request.json());
 
     const [rows]: any = await pool.query(
-      "SELECT Company_ID, Name FROM Company WHERE Company_ID = ? LIMIT 1",
+      "SELECT Company_ID, Name, ThemeColor FROM Company WHERE Company_ID = ? LIMIT 1",
       [companyId],
     );
 
@@ -22,7 +22,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ name: rows[0].Name }, { status: 200 });
+    return NextResponse.json(
+      { name: rows[0].Name, themeColor: rows[0].ThemeColor },
+      { status: 200 },
+    );
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json(
@@ -30,7 +33,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
     console.error(err);
     return NextResponse.json(
       { error: "Internal Server Error" },

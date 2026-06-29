@@ -9,6 +9,10 @@ const RegisterSchema = z.object({
     address: z.string().min(1, "Address is required"),
     contactNumber: z.string().min(1, "Contact number is required"),
     email: z.string().email("Enter a valid email"),
+    themeColor: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color")
+      .default("#2563eb"),
   }),
   garage: z.object({
     garageType: z.string().min(1, "Garage type is required"),
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     await conn.beginTransaction();
 
-    // ── check if company email already exists ───────────────────────────────
+    // check duplicate company email
     const [existing]: any = await conn.query(
       "SELECT Company_ID FROM Company WHERE Email = ? LIMIT 1",
       [company.email],
@@ -68,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── check if admin email/username already exists ────────────────────────
+    // check duplicate admin email/username
     const [existingAdmin]: any = await conn.query(
       "SELECT User_ID FROM User WHERE Email = ? OR Username = ? LIMIT 1",
       [admin.email, admin.username],
@@ -81,19 +85,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── insert company ──────────────────────────────────────────────────────
-    const [companyResult]: any = await conn.query(
+    // generate unique company ID: <SLUG>-<8 alphanumeric chars>
+    // e.g. MERCADOAUTO-A3F7K2PQ
+    const generateCompanyId = (name: string): string => {
+      const slug = name
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      const suffix = Array.from(
+        { length: 8 },
+        () => chars[Math.floor(Math.random() * chars.length)],
+      ).join("");
+      return `${slug}-${suffix}`;
+    };
+
+    // ensure uniqueness (retry up to 5 times in the rare collision case)
+    let companyId = "";
+    for (let i = 0; i < 5; i++) {
+      const candidate = generateCompanyId(company.garageName);
+      const [clash]: any = await conn.query(
+        "SELECT Company_ID FROM Company WHERE Company_ID = ? LIMIT 1",
+        [candidate],
+      );
+      if (clash.length === 0) {
+        companyId = candidate;
+        break;
+      }
+    }
+    if (!companyId) {
+      await conn.rollback();
+      return NextResponse.json(
+        { error: "Failed to generate a unique Company ID. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    // insert company
+    await conn.query(
       `INSERT INTO Company
-        (Name, Address, ContactNumber, Email,
+        (Company_ID, Name, Address, ContactNumber, Email, ThemeColor,
          GarageType, NumberOfBays, OpeningTime, ClosingTime,
          BusinessPermitNumber, DtiSecNumber, YearsInOperation,
          OwnerFullName, OwnerIdType, OwnerIdNumber)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        companyId,
         company.garageName,
         company.address,
         company.contactNumber,
         company.email,
+        company.themeColor,
         garage.garageType,
         garage.numberOfBays,
         garage.openingTime,
@@ -107,11 +149,8 @@ export async function POST(request: NextRequest) {
       ],
     );
 
-    const companyId: number = companyResult.insertId;
-
-    // ── hash password and insert admin user ─────────────────────────────────
+    // hash password and insert admin user
     const hashedPassword = await bcrypt.hash(admin.password, 10);
-
     await conn.query(
       `INSERT INTO User
         (Company_ID, FullName, Username, Email, Password, Role)
@@ -125,6 +164,7 @@ export async function POST(request: NextRequest) {
       {
         message: "Registration successful",
         companyId,
+        themeColor: company.themeColor,
       },
       { status: 201 },
     );

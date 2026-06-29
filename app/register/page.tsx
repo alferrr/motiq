@@ -7,11 +7,17 @@ import axios from "axios";
 import LineWaves from "@/components/LineWaves";
 import Button from "@/components/ui/Button";
 
+// ── types ─────────────────────────────────────────────────────────────────────
+
 type CompanyInfo = {
   garageName: string;
   address: string;
   contactNumber: string;
   email: string;
+};
+
+type BrandingInfo = {
+  themeColor: string;
 };
 
 type GarageDetails = {
@@ -43,8 +49,11 @@ type AdminAccount = {
 
 type Errors<T> = Partial<Record<keyof T, string>>;
 
+// ── constants ─────────────────────────────────────────────────────────────────
+
 const STEPS = [
   { label: "Company", description: "Basic garage info" },
+  { label: "Branding", description: "Choose your theme color" },
   { label: "Garage", description: "Operations details" },
   { label: "Business", description: "Permits & registration" },
   { label: "Owner", description: "Owner identification" },
@@ -71,15 +80,26 @@ const ID_TYPES = [
   "National ID",
 ];
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+const PRESET_COLORS = [
+  { label: "Blue", value: "#2563eb" },
+  { label: "Indigo", value: "#4f46e5" },
+  { label: "Violet", value: "#7c3aed" },
+  { label: "Rose", value: "#e11d48" },
+  { label: "Orange", value: "#ea580c" },
+  { label: "Amber", value: "#d97706" },
+  { label: "Green", value: "#16a34a" },
+  { label: "Teal", value: "#0d9488" },
+  { label: "Cyan", value: "#0891b2" },
+  { label: "Slate", value: "#475569" },
+];
+
+// ── shared styles ─────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full rounded-full border border-white/10 text-base text-white py-2.5 px-5 font-light bg-transparent focus:outline-none focus:border-blue-600 transition-colors placeholder:text-white/25";
 
 const selectCls =
   "w-full rounded-full border border-white/10 text-base text-white py-2.5 px-5 font-light bg-black focus:outline-none focus:border-blue-600 transition-colors appearance-none";
-
-const labelCls = "text-sm font-light text-white/50 ml-1";
 
 function Field({
   label,
@@ -92,12 +112,14 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <p className={labelCls}>{label}</p>
+      <p className="text-sm font-light text-white/50 ml-1">{label}</p>
       {children}
       {error && <p className="text-red-400 text-xs ml-1">{error}</p>}
     </div>
   );
 }
+
+// ── main ──────────────────────────────────────────────────────────────────────
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -112,6 +134,12 @@ export default function RegisterPage() {
     email: "",
   });
   const [companyErrors, setCompanyErrors] = useState<Errors<CompanyInfo>>({});
+
+  const [branding, setBranding] = useState<BrandingInfo>({
+    themeColor: "#2563eb",
+  });
+  const [customColor, setCustomColor] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
 
   const [garageDetails, setGarageDetails] = useState<GarageDetails>({
     garageType: "",
@@ -145,6 +173,8 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
   const [adminErrors, setAdminErrors] = useState<Errors<AdminAccount>>({});
+
+  // ── handlers ─────────────────────────────────────────────────────────────────
 
   const handleCompany = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -180,103 +210,128 @@ export default function RegisterPage() {
     setAdminErrors((p) => ({ ...p, [name]: undefined }));
   };
 
+  const selectPreset = (color: string) => {
+    setBranding({ themeColor: color });
+    setUseCustom(false);
+    setCustomColor("");
+  };
+
+  const applyCustomColor = (val: string) => {
+    setCustomColor(val);
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      setBranding({ themeColor: val });
+    }
+  };
+
+  // ── validation ────────────────────────────────────────────────────────────────
+
   const validateCompany = () => {
-    const errors: Errors<CompanyInfo> = {};
+    const e: Errors<CompanyInfo> = {};
     if (!companyInfo.garageName.trim())
-      errors.garageName = "Garage name is required";
-    if (!companyInfo.address.trim()) errors.address = "Address is required";
+      e.garageName = "Garage name is required";
+    if (!companyInfo.address.trim()) e.address = "Address is required";
     if (!companyInfo.contactNumber.trim())
-      errors.contactNumber = "Contact number is required";
-    if (!companyInfo.email.trim()) errors.email = "Email is required";
+      e.contactNumber = "Contact number is required";
+    if (!companyInfo.email.trim()) e.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(companyInfo.email))
-      errors.email = "Enter a valid email";
-    setCompanyErrors(errors);
-    return Object.keys(errors).length === 0;
+      e.email = "Enter a valid email";
+    setCompanyErrors(e);
+    return !Object.keys(e).length;
+  };
+
+  const validateBranding = () => {
+    if (useCustom && !/^#[0-9a-fA-F]{6}$/.test(customColor)) return false;
+    return true;
   };
 
   const validateGarage = () => {
-    const errors: Errors<GarageDetails> = {};
-    if (!garageDetails.garageType) errors.garageType = "Select a garage type";
+    const e: Errors<GarageDetails> = {};
+    if (!garageDetails.garageType) e.garageType = "Select a garage type";
     if (!garageDetails.numberOfBays.trim())
-      errors.numberOfBays = "Number of bays is required";
+      e.numberOfBays = "Number of bays is required";
     else if (isNaN(Number(garageDetails.numberOfBays)))
-      errors.numberOfBays = "Must be a number";
-    if (!garageDetails.openingTime)
-      errors.openingTime = "Opening time is required";
-    if (!garageDetails.closingTime)
-      errors.closingTime = "Closing time is required";
-    setGarageErrors(errors);
-    return Object.keys(errors).length === 0;
+      e.numberOfBays = "Must be a number";
+    if (!garageDetails.openingTime) e.openingTime = "Opening time is required";
+    if (!garageDetails.closingTime) e.closingTime = "Closing time is required";
+    setGarageErrors(e);
+    return !Object.keys(e).length;
   };
 
   const validateBusiness = () => {
-    const errors: Errors<BusinessRequirements> = {};
+    const e: Errors<BusinessRequirements> = {};
     if (!businessReqs.businessPermitNumber.trim())
-      errors.businessPermitNumber = "Business permit number is required";
+      e.businessPermitNumber = "Business permit number is required";
     if (!businessReqs.dtiSecNumber.trim())
-      errors.dtiSecNumber = "DTI/SEC number is required";
+      e.dtiSecNumber = "DTI/SEC number is required";
     if (!businessReqs.yearsInOperation.trim())
-      errors.yearsInOperation = "Years in operation is required";
+      e.yearsInOperation = "Years in operation is required";
     else if (isNaN(Number(businessReqs.yearsInOperation)))
-      errors.yearsInOperation = "Must be a number";
-    setBusinessErrors(errors);
-    return Object.keys(errors).length === 0;
+      e.yearsInOperation = "Must be a number";
+    setBusinessErrors(e);
+    return !Object.keys(e).length;
   };
 
   const validateOwner = () => {
-    const errors: Errors<OwnerInfo> = {};
-    if (!ownerInfo.fullName.trim()) errors.fullName = "Owner name is required";
-    if (!ownerInfo.idType) errors.idType = "Select an ID type";
-    if (!ownerInfo.idNumber.trim()) errors.idNumber = "ID number is required";
-    setOwnerErrors(errors);
-    return Object.keys(errors).length === 0;
+    const e: Errors<OwnerInfo> = {};
+    if (!ownerInfo.fullName.trim()) e.fullName = "Owner name is required";
+    if (!ownerInfo.idType) e.idType = "Select an ID type";
+    if (!ownerInfo.idNumber.trim()) e.idNumber = "ID number is required";
+    setOwnerErrors(e);
+    return !Object.keys(e).length;
   };
 
   const validateAdmin = () => {
-    const errors: Errors<AdminAccount> = {};
-    if (!adminAccount.fullName.trim())
-      errors.fullName = "Full name is required";
-    if (!adminAccount.username.trim()) errors.username = "Username is required";
-    if (!adminAccount.email.trim()) errors.email = "Email is required";
+    const e: Errors<AdminAccount> = {};
+    if (!adminAccount.fullName.trim()) e.fullName = "Full name is required";
+    if (!adminAccount.username.trim()) e.username = "Username is required";
+    if (!adminAccount.email.trim()) e.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(adminAccount.email))
-      errors.email = "Enter a valid email";
-    if (!adminAccount.password) errors.password = "Password is required";
+      e.email = "Enter a valid email";
+    if (!adminAccount.password) e.password = "Password is required";
     else if (adminAccount.password.length < 8)
-      errors.password = "Minimum 8 characters";
+      e.password = "Minimum 8 characters";
     if (!adminAccount.confirmPassword)
-      errors.confirmPassword = "Please confirm your password";
+      e.confirmPassword = "Please confirm your password";
     else if (adminAccount.password !== adminAccount.confirmPassword)
-      errors.confirmPassword = "Passwords do not match";
-    setAdminErrors(errors);
-    return Object.keys(errors).length === 0;
+      e.confirmPassword = "Passwords do not match";
+    setAdminErrors(e);
+    return !Object.keys(e).length;
   };
 
+  // ── navigation ────────────────────────────────────────────────────────────────
+
+  const validators = [
+    validateCompany,
+    validateBranding,
+    validateGarage,
+    validateBusiness,
+    validateOwner,
+    validateAdmin,
+  ];
+
   const handleNext = () => {
-    const validators = [
-      validateCompany,
-      validateGarage,
-      validateBusiness,
-      validateOwner,
-      validateAdmin,
-    ];
-    if (step < 5 && validators[step]()) setStep((s) => s + 1);
+    if (step < STEPS.length - 1 && validators[step]()) setStep((s) => s + 1);
   };
 
   const handleBack = () => setStep((s) => s - 1);
+
+  // ── submit ────────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
     setServerError("");
     setLoading(true);
     try {
       const res = await axios.post("/api/v1/auth/register", {
-        company: companyInfo,
+        company: { ...companyInfo, themeColor: branding.themeColor },
         garage: garageDetails,
         business: businessReqs,
         owner: ownerInfo,
         admin: adminAccount,
       });
       const { companyId } = res.data;
-      router.push(`/register/success?companyId=${companyId}`);
+      router.push(
+        `/register/success?companyId=${companyId}&color=${encodeURIComponent(branding.themeColor)}`,
+      );
     } catch (err: any) {
       setServerError(
         err.response?.data?.error ?? "Registration failed. Please try again.",
@@ -285,6 +340,8 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  // ── review helpers ────────────────────────────────────────────────────────────
 
   const ReviewRow = ({ label, value }: { label: string; value: string }) => (
     <div className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
@@ -301,12 +358,17 @@ export default function RegisterPage() {
     children: React.ReactNode;
   }) => (
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-blue-500 uppercase tracking-widest mb-1">
+      <p
+        className="text-xs uppercase tracking-widest mb-1"
+        style={{ color: branding.themeColor }}
+      >
         {title}
       </p>
       {children}
     </div>
   );
+
+  // ── render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="relative flex flex-row-reverse h-screen overflow-hidden bg-black">
@@ -323,7 +385,7 @@ export default function RegisterPage() {
           brightness={0.2}
           color1="#0F172A"
           color2="#1E3A8A"
-          color3="#2563EB"
+          color3={branding.themeColor}
           mouseInfluence={2}
         />
       </div>
@@ -339,34 +401,46 @@ export default function RegisterPage() {
               key={i}
               className="flex items-center gap-1 flex-1 last:flex-none"
             >
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
-                    i < step
-                      ? "bg-blue-700/30 text-blue-400"
-                      : i === step
-                        ? "bg-blue-700 text-white"
-                        : "bg-white/5 text-white/20"
-                  }`}
-                >
-                  {i < step ? (
-                    <svg
-                      viewBox="0 0 12 12"
-                      className="w-3 h-3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline points="2,6 5,9 10,3" />
-                    </svg>
-                  ) : (
-                    i + 1
-                  )}
-                </div>
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
+                  i < step
+                    ? "text-white"
+                    : i === step
+                      ? "text-white"
+                      : "bg-white/5 text-white/20"
+                }`}
+                style={
+                  i < step
+                    ? {
+                        backgroundColor: branding.themeColor + "4d",
+                        color: branding.themeColor,
+                      }
+                    : i === step
+                      ? { backgroundColor: branding.themeColor }
+                      : {}
+                }
+              >
+                {i < step ? (
+                  <svg
+                    viewBox="0 0 12 12"
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <polyline points="2,6 5,9 10,3" />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
               </div>
               {i < STEPS.length - 1 && (
                 <div
-                  className={`h-px flex-1 transition-all duration-300 ${i < step ? "bg-blue-700/40" : "bg-white/5"}`}
+                  className="h-px flex-1 transition-all duration-300"
+                  style={{
+                    backgroundColor:
+                      i < step ? branding.themeColor + "66" : "#ffffff0d",
+                  }}
                 />
               )}
             </div>
@@ -381,6 +455,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {/* ── step 0: company info ── */}
         {step === 0 && (
           <div className="flex flex-col gap-3">
             <Field label="Garage Name" error={companyErrors.garageName}>
@@ -423,7 +498,117 @@ export default function RegisterPage() {
           </div>
         )}
 
+        {/* ── step 1: branding ── */}
         {step === 1 && (
+          <div className="flex flex-col gap-5">
+            {/* preview */}
+            <div
+              className="w-full rounded-2xl p-4 flex items-center gap-3 transition-colors duration-300"
+              style={{
+                backgroundColor: branding.themeColor + "1a",
+                border: `1px solid ${branding.themeColor}33`,
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl shrink-0"
+                style={{ backgroundColor: branding.themeColor }}
+              />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  {companyInfo.garageName || "Your Garage"}
+                </p>
+                <p className="text-xs text-white/40">Theme preview</p>
+              </div>
+              <div
+                className="ml-auto text-xs px-3 py-1.5 rounded-full font-medium text-white"
+                style={{ backgroundColor: branding.themeColor }}
+              >
+                Primary
+              </div>
+            </div>
+
+            {/* presets */}
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-light text-white/50 ml-1">
+                Choose a color
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map((c) => {
+                  const selected =
+                    branding.themeColor === c.value && !useCustom;
+                  return (
+                    <button
+                      key={c.value}
+                      onClick={() => selectPreset(c.value)}
+                      title={c.label}
+                      className={`w-8 h-8 rounded-full transition-all duration-200 ${
+                        selected
+                          ? "ring-2 ring-white ring-offset-2 ring-offset-black scale-110"
+                          : "opacity-70 hover:opacity-100"
+                      }`}
+                      style={{ backgroundColor: c.value }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* custom hex */}
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-light text-white/50 ml-1">
+                Or enter a custom hex
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  className={inputCls + " flex-1"}
+                  placeholder="#e63946"
+                  value={customColor}
+                  maxLength={7}
+                  onChange={(e) => {
+                    setUseCustom(true);
+                    applyCustomColor(e.target.value);
+                  }}
+                />
+                {/* native color picker */}
+                <label
+                  className="w-11 h-11 rounded-full border border-white/10 flex items-center justify-center cursor-pointer overflow-hidden shrink-0"
+                  title="Pick color"
+                  style={{
+                    backgroundColor:
+                      useCustom && /^#[0-9a-fA-F]{6}$/.test(customColor)
+                        ? customColor
+                        : "#ffffff1a",
+                  }}
+                >
+                  <input
+                    type="color"
+                    className="opacity-0 absolute w-0 h-0"
+                    value={
+                      useCustom && /^#[0-9a-fA-F]{6}$/.test(customColor)
+                        ? customColor
+                        : branding.themeColor
+                    }
+                    onChange={(e) => {
+                      setUseCustom(true);
+                      setCustomColor(e.target.value);
+                      setBranding({ themeColor: e.target.value });
+                    }}
+                  />
+                </label>
+              </div>
+              {useCustom &&
+                customColor &&
+                !/^#[0-9a-fA-F]{6}$/.test(customColor) && (
+                  <p className="text-red-400 text-xs ml-1">
+                    Enter a valid hex color (e.g. #e63946)
+                  </p>
+                )}
+            </div>
+          </div>
+        )}
+
+        {/* ── step 2: garage details ── */}
+        {step === 2 && (
           <div className="flex flex-col gap-3">
             <Field label="Garage Type" error={garageErrors.garageType}>
               <div className="relative">
@@ -487,8 +672,8 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* ── step 2: business requirements ── */}
-        {step === 2 && (
+        {/* ── step 3: business requirements ── */}
+        {step === 3 && (
           <div className="flex flex-col gap-3">
             <Field
               label="Business Permit Number"
@@ -531,8 +716,8 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* ── step 3: owner info ── */}
-        {step === 3 && (
+        {/* ── step 4: owner info ── */}
+        {step === 4 && (
           <div className="flex flex-col gap-3">
             <Field label="Owner Full Name" error={ownerErrors.fullName}>
               <input
@@ -583,8 +768,8 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* ── step 4: admin account ── */}
-        {step === 4 && (
+        {/* ── step 5: admin account ── */}
+        {step === 5 && (
           <div className="flex flex-col gap-3">
             <Field label="Full Name" error={adminErrors.fullName}>
               <input
@@ -637,14 +822,28 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* step 5: review */}
-        {step === 5 && (
-          <div className="flex flex-col gap-4 max-h-[45vh] overflow-y-auto pr-1 scrollbar-thin">
+        {/* ── step 6: review ── */}
+        {step === 6 && (
+          <div className="flex flex-col gap-4 max-h-[45vh] overflow-y-auto pr-1">
             <ReviewSection title="Company">
               <ReviewRow label="Garage Name" value={companyInfo.garageName} />
               <ReviewRow label="Address" value={companyInfo.address} />
               <ReviewRow label="Contact" value={companyInfo.contactNumber} />
               <ReviewRow label="Email" value={companyInfo.email} />
+            </ReviewSection>
+            <ReviewSection title="Branding">
+              <div className="flex justify-between items-center py-2 border-b border-white/5">
+                <span className="text-white/40 text-sm">Theme Color</span>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded-full border border-white/20"
+                    style={{ backgroundColor: branding.themeColor }}
+                  />
+                  <span className="text-white text-sm font-mono">
+                    {branding.themeColor}
+                  </span>
+                </div>
+              </div>
             </ReviewSection>
             <ReviewSection title="Garage">
               <ReviewRow label="Type" value={garageDetails.garageType} />
@@ -684,6 +883,7 @@ export default function RegisterPage() {
           </div>
         )}
 
+        {/* navigation */}
         <div className={`flex gap-3 ${step > 0 ? "flex-row" : "flex-col"}`}>
           {step > 0 && (
             <button
@@ -693,13 +893,23 @@ export default function RegisterPage() {
               Back
             </button>
           )}
-          {step < 5 ? (
-            <Button text="Continue" onClick={handleNext} />
+          {step < STEPS.length - 1 ? (
+            <button
+              onClick={handleNext}
+              className="w-full py-3 rounded-full text-white font-light text-sm transition-colors"
+              style={{ backgroundColor: branding.themeColor }}
+            >
+              Continue
+            </button>
           ) : (
-            <Button
-              text={loading ? "Submitting…" : "Submit"}
+            <button
               onClick={handleSubmit}
-            />
+              disabled={loading}
+              className="w-full py-3 rounded-full text-white font-light text-sm transition-opacity disabled:opacity-60"
+              style={{ backgroundColor: branding.themeColor }}
+            >
+              {loading ? "Submitting…" : "Submit"}
+            </button>
           )}
         </div>
 
@@ -707,7 +917,8 @@ export default function RegisterPage() {
           Already registered?{" "}
           <Link
             href="/"
-            className="text-blue-600 hover:text-blue-500 transition-colors"
+            className="transition-colors hover:opacity-80"
+            style={{ color: branding.themeColor }}
           >
             Sign in
           </Link>
