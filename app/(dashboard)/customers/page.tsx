@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { useSearchParams } from "next/navigation";
 import Drawer from "@/components/shared/Drawer";
 import VehicleIcon from "@/components/shared/VehicleIcon";
 import axios from "axios";
@@ -17,6 +18,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
+import PageHeader from "@/components/shared/PageHeader";
 
 type Customer = {
   Customer_ID: number;
@@ -424,8 +426,7 @@ function CustomerDrawerContent({
 }
 
 export default function CustomersPage() {
-  const { dark, toggleTheme, primaryColor } = useTheme();
-  const { setOpen } = useSidebar();
+  const { dark, primaryColor } = useTheme();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
@@ -474,6 +475,16 @@ export default function CustomersPage() {
       setLoading(false);
     }
   }, [search, page]);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q) {
+      setSearchInput(q);
+      setSearch(q);
+    }
+  }, []);
 
   useEffect(() => {
     fetchCustomers();
@@ -533,43 +544,7 @@ export default function CustomersPage() {
         className={`flex-1 flex flex-col ${innerBg} ${text} transition-[filter] duration-300`}
         style={{ filter: isDrawerOpen ? "blur(3px)" : "none" }}
       >
-        <header className="h-14 flex items-center justify-between px-6 shrink-0">
-          <div className="flex items-center gap-3 flex-1">
-            <button
-              onClick={() => setOpen(true)}
-              className={`lg:hidden ${muted}`}
-            >
-              <FaBars size={15} />
-            </button>
-            <p className={`text-sm font-semibold ${text}`}>Customers</p>
-          </div>
-          <div
-            className={`hidden sm:flex items-center gap-2 border rounded-full px-3 py-1.5 flex-1 max-w-xs mx-4 ${dark ? "border-white/5 bg-white/5" : "border-gray-200 bg-white"}`}
-          >
-            <FaSearch size={10} className={muted} />
-            <input
-              className={`bg-transparent outline-none w-full text-xs ${dark ? "text-gray-300 placeholder:text-gray-600" : "text-gray-700 placeholder:text-gray-400"}`}
-              placeholder="Search anything..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-            <span className={`text-[10px] ${muted} shrink-0`}>⌘ F</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-colors ${dark ? "border-white/5 text-gray-500 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-            >
-              {dark ? <FaSun size={12} /> : <FaMoon size={12} />}
-            </button>
-            <button
-              className={`relative w-8 h-8 rounded-full flex items-center justify-center border transition-colors ${dark ? "border-white/5 text-gray-500 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-            >
-              <FaBell size={12} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-            </button>
-          </div>
-        </header>
+        <PageHeader title="Customers" />
 
         <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto">
           {error && (

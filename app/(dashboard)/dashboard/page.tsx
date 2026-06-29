@@ -22,6 +22,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import PageHeader from "@/components/shared/PageHeader";
 
 type SalesPoint = { month: string; Revenue: number };
 
@@ -277,46 +278,7 @@ function Topbar({
   text: string;
 }) {
   const { setOpen } = useSidebar();
-  return (
-    <header className="h-14 flex items-center justify-between px-6 shrink-0">
-      <div className="flex items-center gap-3 flex-1">
-        <button onClick={() => setOpen(true)} className={`lg:hidden ${muted}`}>
-          <FaBars size={15} />
-        </button>
-        <p className={`text-sm font-semibold ${text}`}>{title}</p>
-      </div>
-      <div
-        className={`hidden sm:flex items-center gap-2 border rounded-full px-3 py-1.5 flex-1 max-w-xs mx-4 ${dark ? "border-white/5 bg-white/5" : "border-gray-200 bg-white"}`}
-      >
-        <FaSearch size={10} className={muted} />
-        <input
-          className={`bg-transparent outline-none w-full text-xs ${dark ? "text-gray-300 placeholder:text-gray-600" : "text-gray-700 placeholder:text-gray-400"}`}
-          placeholder="Search anything..."
-        />
-        <span className={`text-[10px] ${muted} shrink-0`}>⌘ F</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={toggleTheme}
-          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-colors ${dark ? "border-white/5 text-gray-500 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-        >
-          {dark ? <FaSun size={12} /> : <FaMoon size={12} />}
-        </button>
-        <button
-          className={`relative w-8 h-8 rounded-full flex items-center justify-center border transition-colors ${dark ? "border-white/5 text-gray-500 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-        >
-          <FaBell size={12} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-        </button>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-          style={{ backgroundColor: primaryColor }}
-        >
-          A
-        </div>
-      </div>
-    </header>
-  );
+  return <PageHeader title="Dashboard" />;
 }
 
 function AdminDashboard({

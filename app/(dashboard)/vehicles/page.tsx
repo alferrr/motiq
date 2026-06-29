@@ -17,6 +17,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
+import { useSearchParams } from "next/navigation";
 
 type Vehicle = {
   Vehicle_ID: number;
@@ -607,6 +608,15 @@ export default function VehiclesPage() {
     }
   };
 
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q) {
+      setSearchInput(q);
+      setSearch(q);
+    }
+  }, []);
   return (
     <div suppressHydrationWarning className="flex-1 flex relative">
       <div

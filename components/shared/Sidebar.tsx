@@ -138,7 +138,7 @@ export default function Sidebar() {
 
       <aside
         suppressHydrationWarning
-        className={`fixed top-0 left-0 h-full w-56 border-r z-30 flex flex-col
+        className={`fixed top-0 left-0 h-full w-56 z-30 flex flex-col
           transition-transform duration-300 ease-in-out
           ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${bg} ${border}`}
