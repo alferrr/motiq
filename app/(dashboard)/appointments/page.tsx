@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import Drawer from "@/components/shared/Drawer";
+import Modal from "@/components/shared/Modal";
+import SearchableSelect from "@/components/shared/SearchableSelect";
 import axios from "axios";
 import {
   FaBars,
@@ -12,7 +14,6 @@ import {
   FaSun,
   FaSearch,
   FaPlus,
-  FaTimes,
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
@@ -102,61 +103,6 @@ function parseDate(dateStr: string) {
   return new Date(y, m - 1, day);
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-  card,
-  text,
-  border,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  card: string;
-  text: string;
-  border: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-  }, []);
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 200);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 transition-opacity duration-200"
-      style={{
-        opacity: visible ? 1 : 0,
-        backdropFilter: visible ? "blur(4px)" : "none",
-      }}
-    >
-      <div
-        className={`w-full max-w-md rounded-2xl border shadow-2xl transition-all duration-200 ${card}`}
-        style={{
-          transform: visible ? "scale(1)" : "scale(0.95)",
-          opacity: visible ? 1 : 0,
-        }}
-      >
-        <div
-          className={`flex items-center justify-between px-5 py-4 border-b ${border}`}
-        >
-          <p className={`text-sm font-semibold ${text}`}>{title}</p>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <FaTimes size={14} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function AppointmentForm({
   initial,
@@ -195,8 +141,6 @@ function AppointmentForm({
 
   const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
     ${dark ? "border-white/10 text-white placeholder:text-gray-600" : "border-gray-200 text-gray-900 placeholder:text-gray-400"}`;
-  const selectCls = `w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors
-    ${dark ? "border-white/10 text-white bg-[#111318]" : "border-gray-200 text-gray-900 bg-white"}`;
 
   const filteredVehicles = form.customerId
     ? vehicles.filter(
@@ -234,27 +178,20 @@ function AppointmentForm({
     <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Customer</p>
-        <select
-          className={selectCls}
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search customers…"
+          emptyMessage="No customers found"
           value={form.customerId}
-          onChange={(e) => {
-            setForm((p) => ({
-              ...p,
-              customerId: e.target.value,
-              vehicleId: "",
-            }));
+          onChange={(v) => {
+            setForm((p) => ({ ...p, customerId: v, vehicleId: "" }));
             setErrors((p) => ({ ...p, customerId: undefined }));
           }}
-        >
-          <option value="" disabled>
-            Select customer
-          </option>
-          {customers.map((c) => (
-            <option key={c.Customer_ID} value={c.Customer_ID}>
-              {c.FullName}
-            </option>
-          ))}
-        </select>
+          options={customers.map((c) => ({
+            value: String(c.Customer_ID),
+            label: c.FullName,
+          }))}
+        />
         {errors.customerId && (
           <p className="text-red-400 text-xs">{errors.customerId}</p>
         )}
@@ -262,21 +199,21 @@ function AppointmentForm({
 
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Vehicle</p>
-        <select
-          className={selectCls}
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search vehicles…"
+          emptyMessage="No vehicles found"
           value={form.vehicleId}
-          onChange={set("vehicleId")}
+          onChange={(v) => {
+            setForm((p) => ({ ...p, vehicleId: v }));
+            setErrors((p) => ({ ...p, vehicleId: undefined }));
+          }}
           disabled={!form.customerId}
-        >
-          <option value="" disabled>
-            Select vehicle
-          </option>
-          {filteredVehicles.map((v) => (
-            <option key={v.Vehicle_ID} value={v.Vehicle_ID}>
-              {v.Make} {v.Model} ({v.PlateNumber})
-            </option>
-          ))}
-        </select>
+          options={filteredVehicles.map((v) => ({
+            value: String(v.Vehicle_ID),
+            label: `${v.Make} ${v.Model} (${v.PlateNumber})`,
+          }))}
+        />
         {errors.vehicleId && (
           <p className="text-red-400 text-xs">{errors.vehicleId}</p>
         )}

@@ -5,6 +5,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useSearchParams } from "next/navigation";
 import Drawer from "@/components/shared/Drawer";
+import Modal from "@/components/shared/Modal";
+import SearchableSelect from "@/components/shared/SearchableSelect";
 import VehicleIcon from "@/components/shared/VehicleIcon";
 import axios from "axios";
 import {
@@ -114,61 +116,6 @@ function StatusBadge({ status, dark }: { status: string; dark: boolean }) {
   );
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-  card,
-  text,
-  border,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  card: string;
-  text: string;
-  border: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-  }, []);
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 200);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 transition-opacity duration-200"
-      style={{
-        opacity: visible ? 1 : 0,
-        backdropFilter: visible ? "blur(4px)" : "none",
-      }}
-    >
-      <div
-        className={`w-full max-w-lg rounded-2xl border shadow-2xl transition-all duration-200 ${card}`}
-        style={{
-          transform: visible ? "scale(1)" : "scale(0.95)",
-          opacity: visible ? 1 : 0,
-        }}
-      >
-        <div
-          className={`flex items-center justify-between px-5 py-4 border-b ${border}`}
-        >
-          <p className={`text-sm font-semibold ${text}`}>{title}</p>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <FaTimes size={14} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function JobForm({
   initial,
@@ -206,8 +153,6 @@ function JobForm({
 
   const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
     ${dark ? "border-white/10 text-white placeholder:text-gray-600" : "border-gray-200 text-gray-900 placeholder:text-gray-400"}`;
-  const selectCls = `w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors
-    ${dark ? "border-white/10 text-white bg-[#111318]" : "border-gray-200 text-gray-900 bg-white"}`;
 
   const set =
     (key: keyof FormState) =>
@@ -233,20 +178,20 @@ function JobForm({
     <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Vehicle</p>
-        <select
-          className={selectCls}
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search vehicles…"
+          emptyMessage="No vehicles found"
           value={form.vehicleId}
-          onChange={set("vehicleId")}
-        >
-          <option value="" disabled>
-            Select vehicle
-          </option>
-          {vehicles.map((v) => (
-            <option key={v.Vehicle_ID} value={v.Vehicle_ID}>
-              {v.ownerName} — {v.Make} {v.Model} ({v.PlateNumber})
-            </option>
-          ))}
-        </select>
+          onChange={(v) => {
+            setForm((p) => ({ ...p, vehicleId: v }));
+            setErrors((p) => ({ ...p, vehicleId: undefined }));
+          }}
+          options={vehicles.map((v) => ({
+            value: String(v.Vehicle_ID),
+            label: `${v.ownerName} — ${v.Make} ${v.Model} (${v.PlateNumber})`,
+          }))}
+        />
         {errors.vehicleId && (
           <p className="text-red-400 text-xs">{errors.vehicleId}</p>
         )}
@@ -254,21 +199,22 @@ function JobForm({
 
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Assign Mechanic</p>
-        <select
-          className={selectCls}
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search mechanics…"
+          emptyMessage="No mechanics found"
           value={form.mechanicId}
-          onChange={set("mechanicId")}
-        >
-          <option value="" disabled>
-            Select mechanic
-          </option>
-          {mechanics.map((m) => (
-            <option key={m.Mechanic_ID} value={m.Mechanic_ID}>
-              {m.FullName}
-              {m.Specialization ? ` — ${m.Specialization}` : ""}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => {
+            setForm((p) => ({ ...p, mechanicId: v }));
+            setErrors((p) => ({ ...p, mechanicId: undefined }));
+          }}
+          options={mechanics.map((m) => ({
+            value: String(m.Mechanic_ID),
+            label: m.Specialization
+              ? `${m.FullName} — ${m.Specialization}`
+              : m.FullName,
+          }))}
+        />
         {errors.mechanicId && (
           <p className="text-red-400 text-xs">{errors.mechanicId}</p>
         )}
@@ -556,18 +502,19 @@ function StatusModal({
         )}
         {!loadingCatalog && (
           <div className="flex gap-2">
-            <select
-              className={`${selectCls} flex-1`}
-              value={addPartId}
-              onChange={(e) => setAddPartId(e.target.value)}
-            >
-              <option value="">Select part…</option>
-              {allParts.map((p) => (
-                <option key={p.Part_ID} value={p.Part_ID}>
-                  {p.PartName} ({p.StockQuantity} in stock)
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <SearchableSelect
+                dark={dark}
+                placeholder="Search parts…"
+                emptyMessage="No parts found"
+                value={addPartId}
+                onChange={setAddPartId}
+                options={allParts.map((p) => ({
+                  value: String(p.Part_ID),
+                  label: `${p.PartName} (${p.StockQuantity} in stock)`,
+                }))}
+              />
+            </div>
             <input
               className={`${inputCls} w-16`}
               type="number"
@@ -1183,6 +1130,7 @@ export default function JobOrdersPage() {
         {showAdd && (
           <Modal
             title="New Job Order"
+            size="lg"
             onClose={() => setShowAdd(false)}
             card={card}
             text={text}
@@ -1209,6 +1157,7 @@ export default function JobOrdersPage() {
         {statusTarget && (
           <Modal
             title="Update Job Status"
+            size="lg"
             onClose={() => setStatusTarget(null)}
             card={card}
             text={text}
@@ -1231,6 +1180,7 @@ export default function JobOrdersPage() {
         {deleteTarget !== null && (
           <Modal
             title="Delete Job Order"
+            size="lg"
             onClose={() => setDeleteTarget(null)}
             card={card}
             text={text}

@@ -34,6 +34,15 @@ export default function Drawer({
     }
   }, [open]);
 
+  useEffect(() => {
+    // a modal is about to open — close immediately so it never overlaps the modal
+    const handler = () => {
+      if (open) onClose();
+    };
+    window.addEventListener("modal-open", handler);
+    return () => window.removeEventListener("modal-open", handler);
+  }, [open, onClose]);
+
   const handleClose = () => {
     setVisible(false);
     setTimeout(onClose, 300);

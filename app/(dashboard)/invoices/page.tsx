@@ -4,11 +4,12 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSearchParams } from "next/navigation";
 import Drawer from "@/components/shared/Drawer";
+import Modal from "@/components/shared/Modal";
+import SearchableSelect from "@/components/shared/SearchableSelect";
 import axios from "axios";
 import {
   FaSearch,
   FaPlus,
-  FaTimes,
   FaChevronLeft,
   FaChevronRight,
   FaCopy,
@@ -109,61 +110,6 @@ function peso(n: number | string) {
   return `₱${Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-  card,
-  text,
-  border,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  card: string;
-  text: string;
-  border: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-  }, []);
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 200);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 transition-opacity duration-200"
-      style={{
-        opacity: visible ? 1 : 0,
-        backdropFilter: visible ? "blur(4px)" : "none",
-      }}
-    >
-      <div
-        className={`w-full max-w-md rounded-2xl border shadow-2xl transition-all duration-200 ${card}`}
-        style={{
-          transform: visible ? "scale(1)" : "scale(0.95)",
-          opacity: visible ? 1 : 0,
-        }}
-      >
-        <div
-          className={`flex items-center justify-between px-5 py-4 border-b ${border}`}
-        >
-          <p className={`text-sm font-semibold ${text}`}>{title}</p>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <FaTimes size={14} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function CreateInvoiceModal({
   eligibleJobs,
@@ -208,9 +154,6 @@ function CreateInvoiceModal({
       .finally(() => setPreviewLoading(false));
   }, [jobId]);
 
-  const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
-    ${dark ? "border-white/10 text-white" : "border-gray-200 text-gray-900"}`;
-
   return (
     <div className="p-5 flex flex-col gap-4">
       {serverError && <p className="text-red-400 text-xs">{serverError}</p>}
@@ -223,19 +166,17 @@ function CreateInvoiceModal({
         <>
           <div className="flex flex-col gap-1.5">
             <p className={`text-xs ${muted}`}>Job Order</p>
-            <select
-              className={inputCls}
-              value={jobId}
-              onChange={(e) => setJobId(Number(e.target.value))}
-            >
-              <option value="">Select a completed job…</option>
-              {eligibleJobs.map((j) => (
-                <option key={j.Job_ID} value={j.Job_ID}>
-                  #{j.Job_ID} — {j.customerName} — {j.Make} {j.Model} (
-                  {j.PlateNumber})
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              dark={dark}
+              placeholder="Search completed jobs…"
+              emptyMessage="No jobs found"
+              value={jobId ? String(jobId) : ""}
+              onChange={(v) => setJobId(v ? Number(v) : "")}
+              options={eligibleJobs.map((j) => ({
+                value: String(j.Job_ID),
+                label: `#${j.Job_ID} — ${j.customerName} — ${j.Make} ${j.Model} (${j.PlateNumber})`,
+              }))}
+            />
           </div>
 
           {jobId && (

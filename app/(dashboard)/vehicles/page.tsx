@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import Drawer from "@/components/shared/Drawer";
+import Modal from "@/components/shared/Modal";
+import SearchableSelect from "@/components/shared/SearchableSelect";
 import VehicleIcon from "@/components/shared/VehicleIcon";
 import axios from "axios";
 import {
@@ -13,7 +15,6 @@ import {
   FaSun,
   FaSearch,
   FaPlus,
-  FaTimes,
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
@@ -77,61 +78,6 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded-lg bg-white/5 ${className}`} />;
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-  card,
-  text,
-  border,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  card: string;
-  text: string;
-  border: string;
-}) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-  }, []);
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 200);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 transition-opacity duration-200"
-      style={{
-        opacity: visible ? 1 : 0,
-        backdropFilter: visible ? "blur(4px)" : "none",
-      }}
-    >
-      <div
-        className={`w-full max-w-lg rounded-2xl border shadow-2xl transition-all duration-200 ${card}`}
-        style={{
-          transform: visible ? "scale(1)" : "scale(0.95)",
-          opacity: visible ? 1 : 0,
-        }}
-      >
-        <div
-          className={`flex items-center justify-between px-5 py-4 border-b ${border}`}
-        >
-          <p className={`text-sm font-semibold ${text}`}>{title}</p>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <FaTimes size={14} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function VehicleForm({
   initial,
@@ -171,8 +117,6 @@ function VehicleForm({
 
   const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
     ${dark ? "border-white/10 text-white placeholder:text-gray-600" : "border-gray-200 text-gray-900 placeholder:text-gray-400"}`;
-  const selectCls = `w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors
-    ${dark ? "border-white/10 text-white bg-[#111318]" : "border-gray-200 text-gray-900 bg-white"}`;
 
   const set =
     (key: keyof FormState) =>
@@ -195,20 +139,20 @@ function VehicleForm({
     <div className="p-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Owner</p>
-        <select
-          className={selectCls}
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search customers…"
+          emptyMessage="No customers found"
           value={form.customerId}
-          onChange={set("customerId")}
-        >
-          <option value="" disabled>
-            Select customer
-          </option>
-          {customers.map((c) => (
-            <option key={c.Customer_ID} value={c.Customer_ID}>
-              {c.FullName}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => {
+            setForm((p) => ({ ...p, customerId: v }));
+            setErrors((p) => ({ ...p, customerId: undefined }));
+          }}
+          options={customers.map((c) => ({
+            value: String(c.Customer_ID),
+            label: c.FullName,
+          }))}
+        />
         {errors.customerId && (
           <p className="text-red-400 text-xs">{errors.customerId}</p>
         )}
@@ -851,6 +795,7 @@ export default function VehiclesPage() {
         {showAdd && (
           <Modal
             title="Add Vehicle"
+            size="lg"
             onClose={() => setShowAdd(false)}
             card={card}
             text={text}
@@ -876,6 +821,7 @@ export default function VehiclesPage() {
         {editTarget && (
           <Modal
             title="Edit Vehicle"
+            size="lg"
             onClose={() => setEditTarget(null)}
             card={card}
             text={text}
@@ -911,6 +857,7 @@ export default function VehiclesPage() {
         {deleteTarget !== null && (
           <Modal
             title="Delete Vehicle"
+            size="lg"
             onClose={() => setDeleteTarget(null)}
             card={card}
             text={text}
