@@ -249,7 +249,13 @@ const Hero = () => {
           through one centralized dashboard designed specifically for
           auto-repair businesses.
         </p>
-        <GlassCard className="w-full mt-10 sm:mt-20 h-64 sm:h-100 md:h-150 mb-10 sm:mb-20"></GlassCard>
+        <Image
+          src="/hero.png"
+          alt="Motiq dashboard preview"
+          width={2940}
+          height={1672}
+          className="w-full sm:w-[85%] md:w-[80%] h-auto mt-10 sm:mt-20 mb-10 sm:mb-20 rounded-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
+        />
 
         <div className="flex flex-wrap gap-8 items-center justify-center sm:justify-between w-full">
           <div className="stat-container">

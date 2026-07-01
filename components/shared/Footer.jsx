@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <div
@@ -20,6 +22,20 @@ export default function Footer() {
         operations, reduce manual work, and deliver faster, more efficient
         service.
       </p>
+      <nav className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto px-6 sm:px-0 mt-4">
+        <Link
+          href="/register"
+          className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-[#0e61d5] font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
+        >
+          Get Started Free
+        </Link>
+        <Link
+          href="/signin"
+          className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-white text-black font-light text-sm transition-colors hover:bg-white/90"
+        >
+          Sign In
+        </Link>
+      </nav>
     </div>
   );
 }
