@@ -354,7 +354,7 @@ const Hero = () => {
             return (
               <GlassCard
                 key={step.step}
-                className="w-full md:w-100 min-h-100"
+                className="w-full md:w-100 min-h-100 p-[14px]"
                 contentClassName=""
               >
                 <div className="photo relative h-50 border border-white/10 rounded-xl w-full overflow-hidden">
