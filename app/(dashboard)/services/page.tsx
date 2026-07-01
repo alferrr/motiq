@@ -453,7 +453,7 @@ export default function ServicesPage() {
       >
         <PageHeader title="Services" />
 
-        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0">
+        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0 [&>*]:shrink-0">
           {error && (
             <div
               className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
