@@ -248,7 +248,7 @@ const Hero = () => {
         </p>
         <GlassCard className="w-full mt-10 sm:mt-20 h-64 sm:h-100 md:h-150 mb-10 sm:mb-20"></GlassCard>
 
-        <div className="flex flex-wrap gap-8 items-start justify-center sm:justify-between w-full">
+        <div className="flex flex-wrap gap-8 items-center justify-center sm:justify-between w-full">
           <div className="stat-container">
             <div className="number">
               {" "}
@@ -295,10 +295,10 @@ const Hero = () => {
                 className=""
                 delay={0}
               />
-              x Faster
+              x
             </div>
 
-            <p className="mt-5">Repair History Retrieval</p>
+            <p className="mt-5">Faster Repair History Retrieval</p>
           </div>
           <div className="stat-container">
             <div className="number">

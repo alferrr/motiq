@@ -19,10 +19,10 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 z-99 flex w-full items-center justify-between px-4 sm:px-8 md:px-20 py-4 md:py-6 text-white transition-all duration-300 ${
+      className={`fixed top-0 z-99 flex w-full items-center justify-between px-4 sm:px-8 md:px-20 py-4 md:py-6 text-white border-b transition-all duration-300 ${
         scrolled
-          ? "bg-black/30 backdrop-blur-2xl border-b border-white/10 shadow-lg"
-          : "bg-transparent"
+          ? "bg-black/30 backdrop-blur-2xl border-white/10 shadow-lg"
+          : "bg-transparent border-transparent"
       }`}
     >
       <h1 className="shrink-0 md:w-1/3 text-xl sm:text-2xl md:text-3xl font-semibold font-heading">
