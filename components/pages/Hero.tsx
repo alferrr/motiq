@@ -29,6 +29,8 @@ import SpotlightCard from "../SpotlightCard";
 import GlassCard from "../ui/GlassCard";
 import CountUp from "../CountUp";
 
+import motiq-hero from "@/hero.png";
+
 export const carBrands = [
   { node: <SiToyota />, title: "Toyota" },
   { node: <SiHonda />, title: "Honda" },

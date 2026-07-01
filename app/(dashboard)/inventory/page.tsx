@@ -584,14 +584,14 @@ export default function InventoryPage() {
   };
 
   return (
-    <div suppressHydrationWarning className="flex-1 flex relative">
+    <div suppressHydrationWarning className="flex-1 flex relative min-h-0">
       <div
-        className={`flex-1 flex flex-col ${innerBg} ${text} transition-[filter] duration-300`}
+        className={`flex-1 flex flex-col min-h-0 ${innerBg} ${text} transition-[filter] duration-300`}
         style={{ filter: isDrawerOpen ? "blur(3px)" : "none" }}
       >
         <PageHeader title="Inventory" />
 
-        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto">
+        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0">
           {error && (
             <div
               className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -607,7 +607,28 @@ export default function InventoryPage() {
                 {total} part{total !== 1 ? "s" : ""} in stock
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
+                  >
+                    <FaChevronLeft size={10} />
+                  </button>
+                  <span className={`text-xs ${muted}`}>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
+                  >
+                    <FaChevronRight size={10} />
+                  </button>
+                </div>
+              )}
               <select
                 className={selectCls}
                 value={filter}
@@ -775,47 +796,6 @@ export default function InventoryPage() {
                 )}
               </tbody>
             </table>
-
-            {totalPages > 1 && (
-              <div
-                className={`flex items-center justify-between px-5 py-3 border-t ${border}`}
-              >
-                <p className={`text-xs ${muted}`}>
-                  Showing {(page - 1) * limit + 1}–
-                  {Math.min(page * limit, total)} of {total}
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-                  >
-                    <FaChevronLeft size={10} />
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setPage(i + 1)}
-                      className="w-7 h-7 rounded-lg text-xs font-medium transition-colors"
-                      style={
-                        page === i + 1
-                          ? { backgroundColor: primaryColor, color: "#fff" }
-                          : { color: dark ? "#6b7280" : "#9ca3af" }
-                      }
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-                  >
-                    <FaChevronRight size={10} />
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </main>
 

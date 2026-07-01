@@ -2,17 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { useSidebar } from "@/context/SidebarContext";
 import axios from "axios";
-import {
-  FaBars,
-  FaBell,
-  FaSearch,
-  FaMoon,
-  FaSun,
-  FaArrowUp,
-  FaArrowDown,
-} from "react-icons/fa";
+import { FaArrowUp } from "react-icons/fa";
 import {
   AreaChart,
   Area,
@@ -24,7 +15,7 @@ import {
 } from "recharts";
 import PageHeader from "@/components/shared/PageHeader";
 
-type SalesPoint = { month: string; Revenue: number };
+type SalesPoint = { month: string; revenue: number };
 
 // admin
 type AdminData = {
@@ -151,99 +142,57 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded-lg bg-white/5 ${className}`} />;
 }
 
+function fmtCurrency(n: number) {
+  return n >= 1_000_000
+    ? `₱${(n / 1_000_000).toFixed(1)}M`
+    : n >= 1_000
+      ? `₱${(n / 1_000).toFixed(1)}k`
+      : `₱${Math.round(n)}`;
+}
+
 function StatCard({
   label,
   value,
-  sub,
-  up,
   loading,
   dark,
-  primary,
-  card,
   text,
   muted,
 }: {
   label: string;
   value: string;
-  sub?: string;
-  up?: boolean;
   loading: boolean;
   dark: boolean;
-  primary: string;
-  card: string;
   text: string;
   muted: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-5 flex flex-col gap-3 ${card}`}>
+    <div className="flex flex-col gap-2 py-1">
       <p className={`text-xs ${muted}`}>{label}</p>
       {loading ? (
-        <Skeleton className="h-8 w-28" />
+        <Skeleton className="h-7 w-24" />
       ) : (
         <p className={`text-2xl font-semibold tracking-tight ${text}`}>
           {value}
         </p>
       )}
-      {sub && (
-        <div className="flex items-center gap-1">
-          {up !== undefined &&
-            (up ? (
-              <FaArrowUp size={9} color={primary} />
-            ) : (
-              <FaArrowDown size={9} className="text-red-500" />
-            ))}
-          <p
-            className={`text-xs ${up ? "" : "text-red-500"}`}
-            style={up ? { color: primary } : {}}
-          >
-            {sub}
-          </p>
-        </div>
-      )}
     </div>
   );
 }
 
-function SectionCard({
-  title,
-  children,
-  action,
-  dark,
-  card,
-  text,
-  muted,
-  border,
-}: {
-  title: string;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-  dark: boolean;
-  card: string;
-  text: string;
-  muted: string;
-  border: string;
-}) {
-  return (
-    <div className={`rounded-2xl border overflow-hidden ${card}`}>
-      <div
-        className={`flex items-center justify-between px-5 py-4 border-b ${border}`}
-      >
-        <p className={`text-sm font-semibold ${text}`}>{title}</p>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function CustomTooltip({ active, payload, label, dark }: any) {
+function CustomTooltip({ active, payload, label, dark, currency }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div
-      className={`rounded-xl border px-3 py-2 text-xs shadow-lg ${dark ? "bg-[#1a1d24] border-white/10 text-white" : "bg-white border-gray-100 text-gray-900"}`}
+      className={`rounded-xl border px-3 py-2 text-xs shadow-lg
+      ${dark ? "bg-[#1a1d24] border-white/10 text-white" : "bg-white border-gray-100 text-gray-900"}`}
     >
       <p className="mb-0.5 font-medium">{label}</p>
-      <p>₱{Number(payload[0].value).toLocaleString()}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color || p.fill }}>
+          {p.name}:{" "}
+          {currency ? `₱${Number(p.value).toLocaleString()}` : p.value}
+        </p>
+      ))}
     </div>
   );
 }
@@ -262,28 +211,8 @@ function StatusBadge({ status, dark }: { status: string; dark: boolean }) {
   );
 }
 
-function Topbar({
-  title,
-  dark,
-  toggleTheme,
-  primaryColor,
-  muted,
-  text,
-}: {
-  title: string;
-  dark: boolean;
-  toggleTheme: () => void;
-  primaryColor: string;
-  muted: string;
-  text: string;
-}) {
-  const { setOpen } = useSidebar();
-  return <PageHeader title="Dashboard" />;
-}
-
 function AdminDashboard({
   dark,
-  card,
   text,
   muted,
   subtle,
@@ -308,26 +237,23 @@ function AdminDashboard({
 
   const chartData = (data?.salesChart ?? []).map((d) => ({
     month: d.month,
-    Revenue: Number(d.Revenue),
+    Revenue: Number(d.revenue),
   }));
 
-  const RangeToggle = ({
-    value,
-    onChange,
-  }: {
-    value: string;
-    onChange: (v: any) => void;
-  }) => (
+  const gridColor = dark ? "#ffffff08" : "#f3f4f6";
+  const axisColor = dark ? "#4b5563" : "#9ca3af";
+
+  const RangeToggle = () => (
     <div
       className={`flex items-center gap-0.5 p-0.5 rounded-full border ${dark ? "border-white/5 bg-white/3" : "border-gray-200 bg-gray-100"}`}
     >
       {(["Days", "Week", "Month"] as const).map((r) => (
         <button
           key={r}
-          onClick={() => onChange(r)}
+          onClick={() => setRange(r)}
           className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
           style={
-            value === r
+            range === r
               ? {
                   backgroundColor: dark ? "#fff" : "#111",
                   color: dark ? "#111" : "#fff",
@@ -342,7 +268,7 @@ function AdminDashboard({
   );
 
   return (
-    <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
+    <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto min-h-0">
       {error && (
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -360,119 +286,176 @@ function AdminDashboard({
               : "Everything looks good today."}
           </p>
         </div>
-        <RangeToggle value={range} onChange={setRange} />
+        <RangeToggle />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={`grid grid-cols-2 lg:grid-cols-4 gap-6 py-4 border-y ${border}`}
+      >
         <StatCard
           label="Total Customers"
           value={String(data?.stats.totalCustomers ?? 0)}
-          sub="+12% vs last month"
-          up
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
         <StatCard
           label="Monthly Revenue"
           value={fmt(data?.stats.monthlyRevenue ?? 0)}
-          sub="+21.8% vs last month"
-          up
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
         <StatCard
           label="Active Repairs"
           value={String(data?.stats.activeRepairs ?? 0)}
-          sub="+16.8% vs last month"
-          up
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
         <StatCard
           label="Low Stock Items"
           value={String(data?.stats.lowStockCount ?? 0)}
-          sub="-12.8% vs last month"
-          up={false}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className={`lg:col-span-3 rounded-2xl border p-5 ${card}`}>
-          <div className="flex items-center justify-between mb-5">
-            <p className={`text-sm font-semibold ${text}`}>Revenue Growth</p>
-            <RangeToggle value={range} onChange={setRange} />
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <p className={`text-sm font-semibold ${text}`}>Revenue Growth</p>
+          <span
+            className="text-xs flex items-center gap-1"
+            style={{ color: primary }}
+          >
+            <FaArrowUp size={9} /> {fmt(data?.stats.monthlyRevenue ?? 0)} this
+            month
+          </span>
+        </div>
+        {loading ? (
+          <Skeleton className="h-56 w-full" />
+        ) : !chartData.length ? (
+          <div className="h-56 flex items-center justify-center">
+            <p className={`text-xs ${muted}`}>No revenue data yet.</p>
           </div>
-          {loading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : !chartData.length ? (
-            <div className="h-48 flex items-center justify-center">
-              <p className={`text-xs ${muted}`}>No revenue data yet.</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={192}>
-              <AreaChart
-                data={chartData}
-                margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={primary} stopOpacity={0.15} />
-                    <stop offset="100%" stopColor={primary} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={dark ? "#ffffff08" : "#f3f4f6"}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 11, fill: dark ? "#4b5563" : "#9ca3af" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: dark ? "#4b5563" : "#9ca3af" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
-                  width={44}
-                />
-                <Tooltip content={<CustomTooltip dark={dark} />} />
-                <Area
-                  type="monotone"
-                  dataKey="Revenue"
-                  stroke={primary}
-                  strokeWidth={2}
-                  fill="url(#grad)"
-                  dot={false}
-                  activeDot={{ r: 4, fill: primary, strokeWidth: 0 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
+        ) : (
+          <ResponsiveContainer width="100%" height={224}>
+            <AreaChart
+              data={chartData}
+              margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={primary} stopOpacity={0.15} />
+                  <stop offset="100%" stopColor={primary} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={gridColor}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11, fill: axisColor }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: axisColor }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                width={48}
+              />
+              <Tooltip content={<CustomTooltip dark={dark} currency />} />
+              <Area
+                type="monotone"
+                dataKey="Revenue"
+                stroke={primary}
+                strokeWidth={2}
+                fill="url(#grad)"
+                dot={false}
+                activeDot={{ r: 4, fill: primary, strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>Recent Job Orders</p>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className={thBg}>
+                <th className={`text-left px-0 py-2 font-medium ${muted}`}>
+                  Customer
+                </th>
+                <th
+                  className={`text-left px-0 py-2 font-medium ${muted} hidden md:table-cell`}
+                >
+                  Vehicle
+                </th>
+                <th className={`text-left px-0 py-2 font-medium ${muted}`}>
+                  Status
+                </th>
+                <th
+                  className={`text-left px-0 py-2 font-medium ${muted} hidden sm:table-cell`}
+                >
+                  Date
+                </th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${divide}`}>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 4 }).map((_, j) => (
+                      <td key={j} className="px-0 py-3">
+                        <Skeleton className="h-4 w-full" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : !data?.recentJobs.length ? (
+                <tr>
+                  <td colSpan={4} className={`px-0 py-8 text-center ${muted}`}>
+                    No job orders yet.
+                  </td>
+                </tr>
+              ) : (
+                data.recentJobs.map((j) => (
+                  <tr key={j.Job_ID}>
+                    <td className={`px-0 py-3 font-medium ${text}`}>
+                      {j.CustomerName}
+                    </td>
+                    <td className={`px-0 py-3 ${muted} hidden md:table-cell`}>
+                      {j.Make} {j.Model}
+                    </td>
+                    <td className="px-0 py-3">
+                      <StatusBadge status={j.Status} dark={dark} />
+                    </td>
+                    <td className={`px-0 py-3 ${muted} hidden sm:table-cell`}>
+                      {new Date(j.JobDate).toLocaleDateString("en-PH", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <div className={`lg:col-span-2 rounded-2xl border p-5 ${card}`}>
-          <p className={`text-sm font-semibold ${text} mb-5`}>
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>
             Today's Appointments
           </p>
           <div className={`flex flex-col divide-y ${divide}`}>
@@ -508,155 +491,52 @@ function AdminDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3">
-          <SectionCard
-            title="Recent Job Orders"
-            action={<span className={`text-xs ${muted}`}>Latest 5</span>}
-            dark={dark}
-            card={card}
-            text={text}
-            muted={muted}
-            border={border}
-          >
-            <table className="w-full text-xs">
-              <thead>
-                <tr className={thBg}>
-                  <th className={`text-left px-5 py-3 font-medium ${muted}`}>
-                    Customer
-                  </th>
-                  <th
-                    className={`text-left px-5 py-3 font-medium ${muted} hidden md:table-cell`}
-                  >
-                    Vehicle
-                  </th>
-                  <th className={`text-left px-5 py-3 font-medium ${muted}`}>
-                    Status
-                  </th>
-                  <th
-                    className={`text-left px-5 py-3 font-medium ${muted} hidden sm:table-cell`}
-                  >
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${divide}`}>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: 4 }).map((_, j) => (
-                        <td key={j} className="px-5 py-3">
-                          <Skeleton className="h-4 w-full" />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : !data?.recentJobs.length ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className={`px-5 py-8 text-center ${muted}`}
-                    >
-                      No job orders yet.
-                    </td>
-                  </tr>
-                ) : (
-                  data.recentJobs.map((j) => (
-                    <tr
-                      key={j.Job_ID}
-                      className={`transition-colors ${dark ? "hover:bg-white/3" : "hover:bg-gray-50"}`}
-                    >
-                      <td className={`px-5 py-3 font-medium ${text}`}>
-                        {j.CustomerName}
-                      </td>
-                      <td className={`px-5 py-3 ${muted} hidden md:table-cell`}>
-                        {j.Make} {j.Model}
-                      </td>
-                      <td className="px-5 py-3">
-                        <StatusBadge status={j.Status} dark={dark} />
-                      </td>
-                      <td className={`px-5 py-3 ${muted} hidden sm:table-cell`}>
-                        {new Date(j.JobDate).toLocaleDateString("en-PH", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </SectionCard>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <p className={`text-sm font-semibold ${text}`}>Low Stock</p>
+          {!!data?.stats.lowStockCount && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-500/10 text-red-500">
+              {data.stats.lowStockCount} items
+            </span>
+          )}
         </div>
-
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          <SectionCard
-            title="Low Stock"
-            action={
-              data?.stats.lowStockCount ? (
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-500/10 text-red-500">
-                  {data.stats.lowStockCount} items
-                </span>
-              ) : undefined
-            }
-            dark={dark}
-            card={card}
-            text={text}
-            muted={muted}
-            border={border}
-          >
-            <div className={`divide-y ${divide}`}>
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="px-5 py-3">
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                ))
-              ) : !data?.lowStock.length ? (
-                <p className={`px-5 py-5 text-xs ${muted}`}>
-                  All parts stocked up.
-                </p>
-              ) : (
-                data.lowStock.map((p, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-5 py-3 gap-4"
-                  >
-                    <div className="min-w-0">
-                      <p className={`text-xs font-medium truncate ${text}`}>
-                        {p.PartName}
-                      </p>
-                      <p className={`text-[10px] font-mono ${muted}`}>
-                        {p.SKU}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs font-semibold text-red-500">
-                        {p.qty} left
-                      </p>
-                      <p className={`text-[10px] ${muted}`}>min {p.min}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </SectionCard>
+        <div className={`flex flex-col divide-y ${divide}`}>
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="py-3">
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ))
+          ) : !data?.lowStock.length ? (
+            <p className={`py-5 text-xs ${muted}`}>All parts stocked up.</p>
+          ) : (
+            data.lowStock.map((p, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between py-3 gap-4"
+              >
+                <div className="min-w-0">
+                  <p className={`text-xs font-medium truncate ${text}`}>
+                    {p.PartName}
+                  </p>
+                  <p className={`text-[10px] font-mono ${muted}`}>{p.SKU}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-semibold text-red-500">
+                    {p.qty} left
+                  </p>
+                  <p className={`text-[10px] ${muted}`}>min {p.min}</p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </main>
   );
 }
 
-function FrontDeskDashboard({
-  dark,
-  card,
-  text,
-  muted,
-  divide,
-  border,
-  primary,
-  fmt,
-}: any) {
+function FrontDeskDashboard({ dark, text, muted, divide, primary, fmt, border }: any) {
   const [data, setData] = useState<FrontDeskData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -670,7 +550,7 @@ function FrontDeskDashboard({
   }, []);
 
   return (
-    <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
+    <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto min-h-0">
       {error && (
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -686,14 +566,14 @@ function FrontDeskDashboard({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={`grid grid-cols-2 lg:grid-cols-4 gap-6 py-4 border-y ${border}`}
+      >
         <StatCard
           label="Today's Appointments"
           value={String(data?.counts.todayApptCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
@@ -702,8 +582,6 @@ function FrontDeskDashboard({
           value={String(data?.counts.pendingCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
@@ -712,8 +590,6 @@ function FrontDeskDashboard({
           value={String(data?.counts.readyCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
@@ -722,44 +598,36 @@ function FrontDeskDashboard({
           value={fmt(data?.counts.todayRevenue ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <SectionCard
-          title="Today's Appointments"
-          action={
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <p className={`text-sm font-semibold ${text}`}>
+              {"Today's Appointments"}
+            </p>
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full"
               style={{ color: primary, backgroundColor: primary + "20" }}
             >
               {data?.appointments.length ?? 0}
             </span>
-          }
-          dark={dark}
-          card={card}
-          text={text}
-          muted={muted}
-          border={border}
-        >
-          <div className={`divide-y ${divide}`}>
+          </div>
+          <div className={`flex flex-col divide-y ${divide}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <Skeleton className="h-10 w-full" />
                 </div>
               ))
             ) : !data?.appointments.length ? (
-              <p className={`px-5 py-5 text-xs ${muted}`}>
-                No appointments today.
-              </p>
+              <p className={`py-5 text-xs ${muted}`}>No appointments today.</p>
             ) : (
               data.appointments.map((a, i) => (
-                <div key={i} className="flex items-start gap-3 px-5 py-3">
+                <div key={i} className="flex items-start gap-3 py-3">
                   <span
                     className="text-[10px] font-mono mt-0.5 shrink-0 w-10"
                     style={{ color: primary }}
@@ -781,28 +649,22 @@ function FrontDeskDashboard({
               ))
             )}
           </div>
-        </SectionCard>
+        </div>
 
-        <SectionCard
-          title="Pending Job Orders"
-          dark={dark}
-          card={card}
-          text={text}
-          muted={muted}
-          border={border}
-        >
-          <div className={`divide-y ${divide}`}>
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>Pending Job Orders</p>
+          <div className={`flex flex-col divide-y ${divide}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <Skeleton className="h-10 w-full" />
                 </div>
               ))
             ) : !data?.pendingJobs.length ? (
-              <p className={`px-5 py-5 text-xs ${muted}`}>No pending jobs.</p>
+              <p className={`py-5 text-xs ${muted}`}>No pending jobs.</p>
             ) : (
               data.pendingJobs.map((j, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-xs font-medium ${text}`}>
                       {j.customer}
@@ -824,30 +686,22 @@ function FrontDeskDashboard({
               ))
             )}
           </div>
-        </SectionCard>
+        </div>
 
-        <SectionCard
-          title="Ready for Pickup"
-          dark={dark}
-          card={card}
-          text={text}
-          muted={muted}
-          border={border}
-        >
-          <div className={`divide-y ${divide}`}>
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>Ready for Pickup</p>
+          <div className={`flex flex-col divide-y ${divide}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <Skeleton className="h-10 w-full" />
                 </div>
               ))
             ) : !data?.readyVehicles.length ? (
-              <p className={`px-5 py-5 text-xs ${muted}`}>
-                No vehicles ready yet.
-              </p>
+              <p className={`py-5 text-xs ${muted}`}>No vehicles ready yet.</p>
             ) : (
               data.readyVehicles.map((v, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-xs font-medium ${text}`}>
                       {v.customer}
@@ -866,32 +720,26 @@ function FrontDeskDashboard({
               ))
             )}
           </div>
-        </SectionCard>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SectionCard
-          title="Recent Customers"
-          dark={dark}
-          card={card}
-          text={text}
-          muted={muted}
-          border={border}
-        >
-          <div className={`divide-y ${divide}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>Recent Customers</p>
+          <div className={`flex flex-col divide-y ${divide}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <Skeleton className="h-8 w-full" />
                 </div>
               ))
             ) : !data?.recentCustomers.length ? (
-              <p className={`px-5 py-5 text-xs ${muted}`}>No customers yet.</p>
+              <p className={`py-5 text-xs ${muted}`}>No customers yet.</p>
             ) : (
               data.recentCustomers.map((c) => (
                 <div
                   key={c.Customer_ID}
-                  className="flex items-center justify-between px-5 py-3"
+                  className="flex items-center justify-between py-3"
                 >
                   <div>
                     <p className={`text-xs font-medium ${text}`}>
@@ -909,30 +757,26 @@ function FrontDeskDashboard({
               ))
             )}
           </div>
-        </SectionCard>
+        </div>
 
-        <SectionCard
-          title="Today's Payments"
-          dark={dark}
-          card={card}
-          text={text}
-          muted={muted}
-          border={border}
-        >
-          <div className={`divide-y ${divide}`}>
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>
+            {"Today's Payments"}
+          </p>
+          <div className={`flex flex-col divide-y ${divide}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-3">
                   <Skeleton className="h-8 w-full" />
                 </div>
               ))
             ) : !data?.todayPayments.length ? (
-              <p className={`px-5 py-5 text-xs ${muted}`}>No payments today.</p>
+              <p className={`py-5 text-xs ${muted}`}>No payments today.</p>
             ) : (
               data.todayPayments.map((p) => (
                 <div
                   key={p.Payment_ID}
-                  className="flex items-center justify-between px-5 py-3"
+                  className="flex items-center justify-between py-3"
                 >
                   <div>
                     <p className={`text-xs font-medium ${text}`}>
@@ -950,21 +794,13 @@ function FrontDeskDashboard({
               ))
             )}
           </div>
-        </SectionCard>
+        </div>
       </div>
     </main>
   );
 }
 
-function MechanicDashboard({
-  dark,
-  card,
-  text,
-  muted,
-  divide,
-  border,
-  primary,
-}: any) {
+function MechanicDashboard({ dark, text, muted, divide, primary, border }: any) {
   const [data, setData] = useState<MechanicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -978,7 +814,7 @@ function MechanicDashboard({
   }, []);
 
   return (
-    <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
+    <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto min-h-0">
       {error && (
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -994,14 +830,14 @@ function MechanicDashboard({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={`grid grid-cols-2 lg:grid-cols-4 gap-6 py-4 border-y ${border}`}
+      >
         <StatCard
           label="Total Assigned"
           value={String(data?.counts.totalCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
@@ -1010,8 +846,6 @@ function MechanicDashboard({
           value={String(data?.counts.pendingCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
@@ -1020,8 +854,6 @@ function MechanicDashboard({
           value={String(data?.counts.inProgressCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
@@ -1030,97 +862,79 @@ function MechanicDashboard({
           value={String(data?.counts.completedCount ?? 0)}
           loading={loading}
           dark={dark}
-          primary={primary}
-          card={card}
           text={text}
           muted={muted}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <SectionCard
-            title="Active Jobs"
-            action={
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ color: primary, backgroundColor: primary + "20" }}
-              >
-                {data?.assignedJobs.length ?? 0}
-              </span>
-            }
-            dark={dark}
-            card={card}
-            text={text}
-            muted={muted}
-            border={border}
-          >
-            <div className={`divide-y ${divide}`}>
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="px-5 py-4">
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ))
-              ) : !data?.assignedJobs.length ? (
-                <p className={`px-5 py-8 text-xs text-center ${muted}`}>
-                  No active jobs assigned.
-                </p>
-              ) : (
-                data.assignedJobs.map((j) => (
-                  <div key={j.Job_ID} className="px-5 py-4">
-                    <div className="flex items-start justify-between gap-4 mb-1">
-                      <div className="min-w-0">
-                        <p className={`text-xs font-medium ${text}`}>
-                          {j.customer}
-                        </p>
-                        <p className={`text-[11px] ${muted}`}>
-                          {j.Make} {j.Model} {j.Year} · {j.PlateNumber}
-                        </p>
-                      </div>
-                      <StatusBadge status={j.Status} dark={dark} />
-                    </div>
-                    {j.ReportedIssue && (
-                      <p className={`text-[11px] mt-1.5 ${muted} line-clamp-2`}>
-                        {j.ReportedIssue}
-                      </p>
-                    )}
-                    <p className={`text-[10px] mt-1 ${muted}`}>
-                      {new Date(j.JobDate).toLocaleDateString("en-PH", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </SectionCard>
-        </div>
-
-        <SectionCard
-          title="Recently Completed"
-          dark={dark}
-          card={card}
-          text={text}
-          muted={muted}
-          border={border}
-        >
-          <div className={`divide-y ${divide}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <p className={`text-sm font-semibold ${text}`}>Active Jobs</p>
+            <span
+              className="text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{ color: primary, backgroundColor: primary + "20" }}
+            >
+              {data?.assignedJobs.length ?? 0}
+            </span>
+          </div>
+          <div className={`flex flex-col divide-y ${divide}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3">
+                <div key={i} className="py-4">
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ))
+            ) : !data?.assignedJobs.length ? (
+              <p className={`py-8 text-xs text-center ${muted}`}>
+                No active jobs assigned.
+              </p>
+            ) : (
+              data.assignedJobs.map((j) => (
+                <div key={j.Job_ID} className="py-4">
+                  <div className="flex items-start justify-between gap-4 mb-1">
+                    <div className="min-w-0">
+                      <p className={`text-xs font-medium ${text}`}>
+                        {j.customer}
+                      </p>
+                      <p className={`text-[11px] ${muted}`}>
+                        {j.Make} {j.Model} {j.Year} · {j.PlateNumber}
+                      </p>
+                    </div>
+                    <StatusBadge status={j.Status} dark={dark} />
+                  </div>
+                  {j.ReportedIssue && (
+                    <p className={`text-[11px] mt-1.5 ${muted} line-clamp-2`}>
+                      {j.ReportedIssue}
+                    </p>
+                  )}
+                  <p className={`text-[10px] mt-1 ${muted}`}>
+                    {new Date(j.JobDate).toLocaleDateString("en-PH", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <p className={`text-sm font-semibold ${text}`}>Recently Completed</p>
+          <div className={`flex flex-col divide-y ${divide}`}>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="py-3">
                   <Skeleton className="h-10 w-full" />
                 </div>
               ))
             ) : !data?.completedJobs.length ? (
-              <p className={`px-5 py-5 text-xs ${muted}`}>
-                No completed jobs yet.
-              </p>
+              <p className={`py-5 text-xs ${muted}`}>No completed jobs yet.</p>
             ) : (
               data.completedJobs.map((j) => (
-                <div key={j.Job_ID} className="px-5 py-3">
+                <div key={j.Job_ID} className="py-3">
                   <div className="flex items-center justify-between mb-0.5">
                     <p className={`text-xs font-medium ${text}`}>
                       {j.customer}
@@ -1140,19 +954,15 @@ function MechanicDashboard({
               ))
             )}
           </div>
-        </SectionCard>
+        </div>
       </div>
     </main>
   );
 }
 
 export default function DashboardPage() {
-  const { dark, toggleTheme, primaryColor, userRole } = useTheme();
+  const { dark, primaryColor, userRole } = useTheme();
 
-  const innerBg = dark ? "bg-[#0d0f13]" : "bg-[#f8f9fb]";
-  const card = dark
-    ? "bg-[#111318] border-white/5"
-    : "bg-white border-gray-100";
   const text = dark ? "text-white" : "text-gray-900";
   const muted = dark ? "text-gray-500" : "text-gray-400";
   const subtle = dark ? "text-gray-400" : "text-gray-600";
@@ -1162,16 +972,10 @@ export default function DashboardPage() {
   const thBg = dark ? "bg-white/3" : "bg-gray-50";
   const border = dark ? "border-white/5" : "border-gray-100";
 
-  const fmt = (n: number) =>
-    n >= 1_000_000
-      ? `₱${(n / 1_000_000).toFixed(1)}M`
-      : n >= 1_000
-        ? `₱${(n / 1_000).toFixed(1)}k`
-        : `₱${Math.round(n)}`;
+  const fmt = fmtCurrency;
 
   const shared = {
     dark,
-    card,
     text,
     muted,
     subtle,
@@ -1188,19 +992,14 @@ export default function DashboardPage() {
     Mechanic: "My Jobs",
   };
 
+  const innerBg = dark ? "bg-[#0d0f13]" : "bg-[#f8f9fb]";
+
   return (
     <div
       suppressHydrationWarning
-      className={`flex-1 flex flex-col ${innerBg} ${text}`}
+      className={`flex-1 flex flex-col min-h-0 ${innerBg} ${text}`}
     >
-      <Topbar
-        title={titleMap[userRole] ?? "Dashboard"}
-        dark={dark}
-        toggleTheme={toggleTheme}
-        primaryColor={primaryColor}
-        muted={muted}
-        text={text}
-      />
+      <PageHeader title={titleMap[userRole] ?? "Dashboard"} />
       {userRole === "Mechanic" ? (
         <MechanicDashboard {...shared} />
       ) : userRole === "Front Desk" ? (

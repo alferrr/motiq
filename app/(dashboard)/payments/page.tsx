@@ -229,10 +229,10 @@ function PaymentsPageInner() {
   }, []);
 
   return (
-    <div suppressHydrationWarning className={`flex-1 flex flex-col ${innerBg} ${text}`}>
+    <div suppressHydrationWarning className={`flex-1 flex flex-col min-h-0 ${innerBg} ${text}`}>
       <PageHeader title="Payments" />
 
-      <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto">
+      <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0">
         {error && (
           <div
             className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -249,47 +249,70 @@ function PaymentsPageInner() {
         </div>
 
         <div className={`rounded-2xl border overflow-hidden ${card}`}>
-          <div className={`flex items-center gap-3 px-5 py-3 border-b flex-wrap ${border}`}>
-            <div className="flex items-center gap-3 flex-1 min-w-[140px] sm:hidden">
-              <FaSearch size={11} className={muted} />
-              <input
-                className={`bg-transparent outline-none w-full text-xs ${dark ? "text-gray-300 placeholder:text-gray-600" : "text-gray-700 placeholder:text-gray-400"}`}
-                placeholder="Search payments..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-              />
+          <div className={`flex items-center justify-between gap-3 px-5 py-3 border-b flex-wrap ${border}`}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-1 min-w-[140px] sm:hidden">
+                <FaSearch size={11} className={muted} />
+                <input
+                  className={`bg-transparent outline-none w-full text-xs ${dark ? "text-gray-300 placeholder:text-gray-600" : "text-gray-700 placeholder:text-gray-400"}`}
+                  placeholder="Search payments..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </div>
+              <select
+                className={`text-xs rounded-lg border px-2.5 py-1.5 bg-transparent outline-none ${dark ? "border-white/10 text-gray-300" : "border-gray-200 text-gray-600"}`}
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All statuses</option>
+                {Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={`text-xs rounded-lg border px-2.5 py-1.5 bg-transparent outline-none ${dark ? "border-white/10 text-gray-300" : "border-gray-200 text-gray-600"}`}
+                value={methodFilter}
+                onChange={(e) => {
+                  setMethodFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All methods</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="GCash">GCash</option>
+                <option value="Maya">Maya</option>
+                <option value="QR Ph">QR Ph</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
             </div>
-            <select
-              className={`text-xs rounded-lg border px-2.5 py-1.5 bg-transparent outline-none ${dark ? "border-white/10 text-gray-300" : "border-gray-200 text-gray-600"}`}
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All statuses</option>
-              {Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              className={`text-xs rounded-lg border px-2.5 py-1.5 bg-transparent outline-none ${dark ? "border-white/10 text-gray-300" : "border-gray-200 text-gray-600"}`}
-              value={methodFilter}
-              onChange={(e) => {
-                setMethodFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All methods</option>
-              <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
-              <option value="GCash">GCash</option>
-              <option value="Maya">Maya</option>
-              <option value="QR Ph">QR Ph</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-            </select>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
+                >
+                  <FaChevronLeft size={10} />
+                </button>
+                <span className={`text-xs ${muted}`}>
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
+                >
+                  <FaChevronRight size={10} />
+                </button>
+              </div>
+            )}
           </div>
 
           <table className="w-full text-xs">
@@ -395,44 +418,6 @@ function PaymentsPageInner() {
               )}
             </tbody>
           </table>
-
-          {totalPages > 1 && (
-            <div className={`flex items-center justify-between px-5 py-3 border-t ${border}`}>
-              <p className={`text-xs ${muted}`}>
-                Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-                >
-                  <FaChevronLeft size={10} />
-                </button>
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPage(i + 1)}
-                    className="w-7 h-7 rounded-lg text-xs font-medium transition-colors"
-                    style={
-                      page === i + 1
-                        ? { backgroundColor: primaryColor, color: "#fff" }
-                        : { color: dark ? "#6b7280" : "#9ca3af" }
-                    }
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center border disabled:opacity-30 ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-400 hover:text-gray-700"}`}
-                >
-                  <FaChevronRight size={10} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </main>
 

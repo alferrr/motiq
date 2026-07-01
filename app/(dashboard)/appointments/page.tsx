@@ -530,14 +530,14 @@ export default function AppointmentsPage() {
   const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month;
 
   return (
-    <div suppressHydrationWarning className="flex-1 flex relative">
+    <div suppressHydrationWarning className="flex-1 flex relative min-h-0">
       <div
-        className={`flex-1 flex flex-col ${innerBg} ${text} transition-[filter] duration-300`}
+        className={`flex-1 flex flex-col min-h-0 ${innerBg} ${text} transition-[filter] duration-300`}
         style={{ filter: isDrawerOpen ? "blur(3px)" : "none" }}
       >
         <PageHeader title="Appointments" />
 
-        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto">
+        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0">
           {error && (
             <div
               className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}

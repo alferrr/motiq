@@ -13,11 +13,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const innerBg = dark ? "bg-[#0d0f13]" : "bg-[#f8f9fb]";
 
   return (
-    <div suppressHydrationWarning className={`min-h-screen ${rootBg}`}>
+    <div suppressHydrationWarning className={`h-screen overflow-hidden ${rootBg}`}>
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div
         suppressHydrationWarning
-        className={`lg:ml-56 min-h-screen flex flex-col ${innerBg} lg:rounded-l-3xl overflow-hidden`}
+        className={`lg:ml-56 h-screen flex flex-col ${innerBg} lg:rounded-l-3xl overflow-hidden`}
       >
         {children}
       </div>

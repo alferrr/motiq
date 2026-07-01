@@ -203,11 +203,11 @@ export default function ReportsPage() {
   return (
     <div
       suppressHydrationWarning
-      className={`flex-1 flex flex-col ${innerBg} ${text}`}
+      className={`flex-1 flex flex-col min-h-0 ${innerBg} ${text}`}
     >
       <PageHeader title="Reports" />
 
-      <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
+      <main className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto min-h-0">
         {error && (
           <div
             className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
