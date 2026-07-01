@@ -20,7 +20,9 @@ import {
   FaTools,
   FaClipboardList,
   FaBoxes,
+  FaFileInvoice,
 } from "react-icons/fa";
+import { MdPayments } from "react-icons/md";
 
 type Notification = {
   id: string;
@@ -45,29 +47,28 @@ const NOTIF_COLOR: Record<string, string> = {
   appointment: "#f59e0b",
 };
 
-// pages that have searchable content
 const SEARCH_PAGES = [
   { label: "Customers", href: "/customers", icon: FaUsers },
   { label: "Vehicles", href: "/vehicles", icon: FaCar },
   { label: "Services", href: "/services", icon: FaTools },
   { label: "Job Orders", href: "/jobs", icon: FaClipboardList },
   { label: "Inventory", href: "/inventory", icon: FaBoxes },
+  { label: "Invoices", href: "/invoices", icon: FaFileInvoice },
+  { label: "Payments", href: "/payments", icon: MdPayments },
 ];
+
+// ── notification panel ────────────────────────────────────────────────────────
 
 function NotificationPanel({
   dark,
-  card,
   text,
   muted,
-  border,
   divide,
   primary,
 }: {
   dark: boolean;
-  card: string;
   text: string;
   muted: string;
-  border: string;
   divide: string;
   primary: string;
 }) {
@@ -108,12 +109,8 @@ function NotificationPanel({
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
 
   return (
-    <div
-      className={`absolute right-0 top-10 w-80 rounded-2xl border shadow-2xl z-50 overflow-hidden ${card}`}
-    >
-      <div
-        className={`flex items-center justify-between px-4 py-3 border-b ${border}`}
-      >
+    <div className="absolute right-0 top-10 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <p className={`text-sm font-semibold ${text}`}>Notifications</p>
           {unreadCount > 0 && (
@@ -196,6 +193,8 @@ function NotificationPanel({
   );
 }
 
+// ── search ────────────────────────────────────────────────────────────────────
+
 function SearchBar({
   dark,
   muted,
@@ -213,8 +212,11 @@ function SearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setValue("");
+  }, [isDashboard]);
+
   const showDropdown = isDashboard && focused && value.trim().length > 0;
-  const showPageSearch = !isDashboard && focused;
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {
@@ -236,9 +238,12 @@ function SearchBar({
     setFocused(false);
   };
 
-  const placeholder = isDashboard
-    ? "Search anything..."
-    : `Search ${SEARCH_PAGES.find((p) => window?.location?.pathname?.startsWith(p.href))?.label?.toLowerCase() ?? "anything"}...`;
+  // on non-dashboard pages, broadcast the search value so the page can filter its own data
+  useEffect(() => {
+    if (!isDashboard) {
+      window.dispatchEvent(new CustomEvent("page-search", { detail: value }));
+    }
+  }, [value, isDashboard]);
 
   return (
     <div
@@ -247,8 +252,7 @@ function SearchBar({
     >
       <div
         className={`flex items-center gap-2 border rounded-full px-3 py-1.5
-        ${dark ? "border-white/5 bg-white/5" : "border-gray-200 bg-white"}
-        ${focused ? "ring-1" : ""}`}
+          ${dark ? "border-white/5 bg-white/5" : "border-gray-200 bg-white"}`}
         style={focused ? { borderColor: primary } : {}}
       >
         <FaSearch size={10} className={muted} />
@@ -256,7 +260,7 @@ function SearchBar({
           ref={inputRef}
           className={`bg-transparent outline-none w-full text-xs
             ${dark ? "text-gray-300 placeholder:text-gray-600" : "text-gray-700 placeholder:text-gray-400"}`}
-          placeholder={isDashboard ? "Search anything..." : `Search...`}
+          placeholder={isDashboard ? "Search anything..." : "Search..."}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -273,7 +277,6 @@ function SearchBar({
         <span className={`text-[10px] ${muted} shrink-0`}>⌘ F</span>
       </div>
 
-      {/* dashboard suggestion dropdown */}
       {showDropdown && (
         <div
           className={`absolute top-10 left-0 right-0 rounded-xl border shadow-xl overflow-hidden z-50
@@ -315,6 +318,8 @@ function SearchBar({
   );
 }
 
+// ── page header ───────────────────────────────────────────────────────────────
+
 type PageHeaderProps = { title: string };
 
 export default function PageHeader({ title }: PageHeaderProps) {
@@ -328,12 +333,8 @@ export default function PageHeader({ title }: PageHeaderProps) {
 
   const isDashboard = pathname === "/dashboard";
 
-  const card = dark
-    ? "bg-[#111318] border-white/5"
-    : "bg-white border-gray-100";
   const text = dark ? "text-white" : "text-gray-900";
   const muted = dark ? "text-gray-500" : "text-gray-400";
-  const border = dark ? "border-white/5" : "border-gray-100";
   const divide = dark ? "divide-white/5" : "divide-gray-100";
 
   const initials = userName
@@ -374,7 +375,7 @@ export default function PageHeader({ title }: PageHeaderProps) {
   return (
     <header
       suppressHydrationWarning
-      className={`h-14 flex items-center justify-between px-6 shrink-0 border-b border-none rounded-bt-full rounded-tl-full`}
+      className="h-14 flex items-center justify-between px-6 shrink-0"
     >
       <div className="flex items-center gap-3 flex-1">
         <button onClick={() => setOpen(true)} className={`lg:hidden ${muted}`}>
@@ -415,10 +416,8 @@ export default function PageHeader({ title }: PageHeaderProps) {
           {showNotifs && (
             <NotificationPanel
               dark={dark}
-              card={card}
               text={text}
               muted={muted}
-              border={border}
               divide={divide}
               primary={primaryColor}
             />

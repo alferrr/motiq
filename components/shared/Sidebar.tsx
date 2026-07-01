@@ -129,7 +129,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* mobile overlay — always rendered, opacity animates */}
       <div
         onClick={() => setOpen(false)}
         className="fixed inset-0 z-20 lg:hidden bg-black/50 backdrop-blur-sm transition-opacity duration-300"
@@ -143,7 +142,6 @@ export default function Sidebar() {
           ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${bg} ${border}`}
       >
-        {/* logo */}
         <div
           suppressHydrationWarning
           className={`flex flex-col justify-center px-5 py-4 border-b ${border}

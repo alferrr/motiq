@@ -9,6 +9,8 @@ const PUBLIC_PATHS = [
   "/api/v1/auth/register",
   "/api/v1/auth/verify-company",
   "/api/v1/auth/logout",
+  "/api/v1/payment-callback",
+  "/pay-status",
 ];
 
 const ROLE_PATHS: Record<string, string[]> = {

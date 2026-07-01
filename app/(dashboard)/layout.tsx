@@ -3,6 +3,7 @@
 import Sidebar from "@/components/shared/Sidebar";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
+import { Suspense } from "react";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { open, setOpen } = useSidebar();
@@ -31,7 +32,9 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <LayoutInner>{children}</LayoutInner>
+      <Suspense>
+        <LayoutInner>{children}</LayoutInner>
+      </Suspense>
     </SidebarProvider>
   );
 }

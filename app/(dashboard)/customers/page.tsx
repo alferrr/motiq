@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { useSidebar } from "@/context/SidebarContext";
 import { useSearchParams } from "next/navigation";
 import Drawer from "@/components/shared/Drawer";
 import VehicleIcon from "@/components/shared/VehicleIcon";
 import axios from "axios";
 import {
-  FaBars,
-  FaBell,
-  FaMoon,
-  FaSun,
   FaSearch,
   FaPlus,
   FaTimes,
@@ -303,7 +298,6 @@ function CustomerDrawerContent({
 
   return (
     <>
-      {/* customer info */}
       <div className="p-5 flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <Avatar name={detail.customer.FullName} color={primary} />
@@ -344,7 +338,6 @@ function CustomerDrawerContent({
         </div>
       </div>
 
-      {/* vehicles */}
       <div className={`border-t ${border}`}>
         <p className={`px-5 py-3 text-xs font-semibold ${text}`}>
           Vehicles{" "}
@@ -380,7 +373,6 @@ function CustomerDrawerContent({
         </div>
       </div>
 
-      {/* job history */}
       <div className={`border-t ${border}`}>
         <p className={`px-5 py-3 text-xs font-semibold ${text}`}>
           Job History{" "}
@@ -425,7 +417,7 @@ function CustomerDrawerContent({
   );
 }
 
-export default function CustomersPage() {
+function CustomersPageInner() {
   const { dark, primaryColor } = useTheme();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -476,28 +468,6 @@ export default function CustomersPage() {
     }
   }, [search, page]);
 
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const q = searchParams.get("search");
-    if (q) {
-      setSearchInput(q);
-      setSearch(q);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
-
   const handleAdd = async (data: FormState) => {
     setFormLoading(true);
     setServerError("");
@@ -537,6 +507,39 @@ export default function CustomersPage() {
       setError(err.response?.data?.error ?? "Failed to delete customer.");
     }
   };
+
+  // ── hooks (all top-level, run on every render) ───────────────────────────────
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q) {
+      setSearchInput(q);
+      setSearch(q);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const value = (e as CustomEvent).detail as string;
+      setSearchInput(value);
+    };
+    window.addEventListener("page-search", handler);
+    return () => window.removeEventListener("page-search", handler);
+  }, []);
 
   return (
     <div suppressHydrationWarning className="flex-1 flex relative">
@@ -843,5 +846,13 @@ export default function CustomersPage() {
         )}
       </Drawer>
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomersPageInner />
+    </Suspense>
   );
 }

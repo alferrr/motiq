@@ -81,7 +81,7 @@ function Modal({
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-
+  
   useEffect(() => {
     const q = searchParams.get("search");
     if (q) {

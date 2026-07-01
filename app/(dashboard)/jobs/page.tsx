@@ -323,12 +323,26 @@ function JobForm({
   );
 }
 
+type ServiceOption = {
+  Service_ID: number;
+  ServiceName: string;
+  Category: string | null;
+  LaborRate: number;
+};
+type PartOption = {
+  Part_ID: number;
+  PartName: string;
+  SKU: string | null;
+  UnitPrice: number;
+  StockQuantity: number;
+};
+type PartRow = { partId: number; quantity: number };
+
 function StatusModal({
   job,
   onClose,
   onSave,
   dark,
-  card,
   text,
   muted,
   border,
@@ -336,7 +350,13 @@ function StatusModal({
 }: {
   job: Job;
   onClose: () => void;
-  onSave: (status: string, diagnosis: string, laborHours: string) => void;
+  onSave: (
+    status: string,
+    diagnosis: string,
+    laborHours: string,
+    serviceIds: number[],
+    parts: PartRow[],
+  ) => void;
   dark: boolean;
   card: string;
   text: string;
@@ -350,14 +370,84 @@ function StatusModal({
     job.LaborHours ? String(job.LaborHours) : "",
   );
   const [loading, setLoading] = useState(false);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+
+  const [allServices, setAllServices] = useState<ServiceOption[]>([]);
+  const [allParts, setAllParts] = useState<PartOption[]>([]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+  const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const [addPartId, setAddPartId] = useState("");
+  const [addPartQty, setAddPartQty] = useState("1");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [detailRes, servicesRes, partsRes] = await Promise.all([
+        axios.get(`/api/v1/jobs/${job.Job_ID}`),
+        axios.get("/api/v1/services", { params: { limit: 500 } }),
+        axios.get("/api/v1/inventory", { params: { limit: 500 } }),
+      ]);
+      if (cancelled) return;
+      setSelectedServiceIds(
+        detailRes.data.services.map((s: { Service_ID: number }) => s.Service_ID),
+      );
+      setPartRows(
+        detailRes.data.parts.map((p: { Part_ID: number; QuantityUsed: number }) => ({
+          partId: p.Part_ID,
+          quantity: p.QuantityUsed,
+        })),
+      );
+      setAllServices(servicesRes.data.services);
+      setAllParts(partsRes.data.parts);
+      setLoadingCatalog(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [job.Job_ID]);
 
   const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
     ${dark ? "border-white/10 text-white placeholder:text-gray-600" : "border-gray-200 text-gray-900 placeholder:text-gray-400"}`;
   const selectCls = `w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors
     ${dark ? "border-white/10 text-white bg-[#111318]" : "border-gray-200 text-gray-900 bg-white"}`;
 
+  const toggleService = (id: number) => {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    );
+  };
+
+  const addPart = () => {
+    const partId = Number(addPartId);
+    const quantity = Number(addPartQty);
+    if (!partId || quantity <= 0) return;
+    setPartRows((prev) => {
+      const existing = prev.find((p) => p.partId === partId);
+      if (existing)
+        return prev.map((p) =>
+          p.partId === partId ? { ...p, quantity: p.quantity + quantity } : p,
+        );
+      return [...prev, { partId, quantity }];
+    });
+    setAddPartId("");
+    setAddPartQty("1");
+  };
+
+  const removePart = (partId: number) => {
+    setPartRows((prev) => prev.filter((p) => p.partId !== partId));
+  };
+
+  const servicesTotal = selectedServiceIds.reduce((sum, id) => {
+    const s = allServices.find((s) => s.Service_ID === id);
+    return sum + (s ? Number(s.LaborRate) : 0);
+  }, 0);
+  const partsTotal = partRows.reduce((sum, row) => {
+    const p = allParts.find((p) => p.Part_ID === row.partId);
+    return sum + (p ? Number(p.UnitPrice) * row.quantity : 0);
+  }, 0);
+
   return (
-    <div className="p-5 flex flex-col gap-4">
+    <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Status</p>
         <select
@@ -398,6 +488,114 @@ function StatusModal({
           onChange={(e) => setLaborHours(e.target.value)}
         />
       </div>
+
+      <div className={`border-t pt-4 ${border}`}>
+        <p className={`text-xs font-semibold mb-2 ${text}`}>Services</p>
+        {loadingCatalog ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-8 w-full rounded-lg bg-white/5 animate-pulse" />
+            ))}
+          </div>
+        ) : !allServices.length ? (
+          <p className={`text-xs ${muted}`}>No services in your catalog yet.</p>
+        ) : (
+          <div className={`rounded-xl border max-h-40 overflow-y-auto divide-y ${dark ? "border-white/10 divide-white/5" : "border-gray-200 divide-gray-100"}`}>
+            {allServices.map((s) => (
+              <label
+                key={s.Service_ID}
+                className="flex items-center justify-between gap-3 px-3 py-2 text-xs cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedServiceIds.includes(s.Service_ID)}
+                    onChange={() => toggleService(s.Service_ID)}
+                  />
+                  <span className={text}>{s.ServiceName}</span>
+                </span>
+                <span className={muted}>₱{Number(s.LaborRate).toLocaleString()}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={`border-t pt-4 ${border}`}>
+        <p className={`text-xs font-semibold mb-2 ${text}`}>Parts Used</p>
+        {!loadingCatalog && !partRows.length && (
+          <p className={`text-xs mb-2 ${muted}`}>No parts added yet.</p>
+        )}
+        {!loadingCatalog && partRows.length > 0 && (
+          <div className={`rounded-xl border mb-2 divide-y ${dark ? "border-white/10 divide-white/5" : "border-gray-200 divide-gray-100"}`}>
+            {partRows.map((row) => {
+              const p = allParts.find((p) => p.Part_ID === row.partId);
+              return (
+                <div
+                  key={row.partId}
+                  className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
+                >
+                  <span className={text}>
+                    {p?.PartName ?? `#${row.partId}`} × {row.quantity}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={muted}>
+                      ₱{p ? (Number(p.UnitPrice) * row.quantity).toLocaleString() : "—"}
+                    </span>
+                    <button
+                      onClick={() => removePart(row.partId)}
+                      className="text-red-400"
+                    >
+                      <FaTimes size={10} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!loadingCatalog && (
+          <div className="flex gap-2">
+            <select
+              className={`${selectCls} flex-1`}
+              value={addPartId}
+              onChange={(e) => setAddPartId(e.target.value)}
+            >
+              <option value="">Select part…</option>
+              {allParts.map((p) => (
+                <option key={p.Part_ID} value={p.Part_ID}>
+                  {p.PartName} ({p.StockQuantity} in stock)
+                </option>
+              ))}
+            </select>
+            <input
+              className={`${inputCls} w-16`}
+              type="number"
+              min="1"
+              value={addPartQty}
+              onChange={(e) => setAddPartQty(e.target.value)}
+            />
+            <button
+              onClick={addPart}
+              className={`px-3 rounded-xl border text-xs font-medium ${dark ? "border-white/10 text-gray-300 hover:text-white" : "border-gray-200 text-gray-600 hover:text-gray-900"}`}
+            >
+              Add
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!loadingCatalog && (
+        <div
+          className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold ${dark ? "bg-white/3" : "bg-gray-50"}`}
+        >
+          <span className={text}>Estimated Total</span>
+          <span style={{ color: primary }}>
+            ₱{(servicesTotal + partsTotal).toLocaleString()}
+          </span>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-1">
         <button
           onClick={onClose}
@@ -408,9 +606,9 @@ function StatusModal({
         <button
           onClick={() => {
             setLoading(true);
-            onSave(status, diagnosis, laborHours);
+            onSave(status, diagnosis, laborHours, selectedServiceIds, partRows);
           }}
-          disabled={loading}
+          disabled={loading || loadingCatalog}
           className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60"
           style={{ backgroundColor: primary }}
         >
@@ -754,6 +952,8 @@ export default function JobOrdersPage() {
     status: string,
     diagnosis: string,
     laborHours: string,
+    serviceIds: number[],
+    parts: PartRow[],
   ) => {
     if (!statusTarget) return;
     try {
@@ -761,6 +961,8 @@ export default function JobOrdersPage() {
         status,
         diagnosis: diagnosis || undefined,
         laborHours: laborHours ? Number(laborHours) : undefined,
+        serviceIds,
+        parts: parts.map((p) => ({ partId: p.partId, quantity: p.quantity })),
       });
       setStatusTarget(null);
       fetchJobs();

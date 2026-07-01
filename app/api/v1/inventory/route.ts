@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") ?? "";
     const filter = searchParams.get("filter") ?? "all"; // all | low | out
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-    const limit = 10;
+    const limit = Math.min(500, Math.max(1, Number(searchParams.get("limit") ?? 10)));
     const offset = (page - 1) * limit;
     const like = `%${search}%`;
 
