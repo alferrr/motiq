@@ -10,12 +10,8 @@ function getCompanyId(request: NextRequest) {
   return payload.companyId as string;
 }
 
-const AppointmentSchema = z.object({
-  customerId: z.coerce.number({ error: "Customer is required" }),
-  vehicleId: z.coerce.number({ error: "Vehicle is required" }),
-  appointmentDate: z.string().min(1, "Date is required"),
-  appointmentTime: z.string().min(1, "Time is required"),
-  reason: z.string().optional(),
+const StatusSchema = z.object({
+  status: z.enum(["Scheduled", "Completed", "Cancelled"]),
 });
 
 export async function GET(request: NextRequest) {
@@ -76,50 +72,65 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
+    const { id } = await params;
     const companyId = getCompanyId(request);
     if (!companyId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = AppointmentSchema.parse(await request.json());
-
-    // conflict check — same vehicle, same date+time
-    const [[conflict]]: any = await pool.query(
-      `SELECT Appointment_ID FROM Appointment
-       WHERE Company_ID = ? AND AppointmentDate = ? AND AppointmentTime = ? AND Status = 'Scheduled'
-       LIMIT 1`,
-      [companyId, body.appointmentDate, body.appointmentTime],
-    );
-    if (conflict)
-      return NextResponse.json(
-        { error: "A slot is already booked at this date and time." },
-        { status: 409 },
-      );
+    const body = StatusSchema.parse(await request.json());
 
     const [result]: any = await pool.query(
-      `INSERT INTO Appointment (Company_ID, Customer_ID, Vehicle_ID, AppointmentDate, AppointmentTime, Reason, Status)
-       VALUES (?, ?, ?, ?, ?, ?, 'Scheduled')`,
-      [
-        companyId,
-        body.customerId,
-        body.vehicleId,
-        body.appointmentDate,
-        body.appointmentTime,
-        body.reason ?? null,
-      ],
+      `UPDATE Appointment SET Status = ? WHERE Appointment_ID = ? AND Company_ID = ?`,
+      [body.status, id, companyId],
     );
+    if (result.affectedRows === 0)
+      return NextResponse.json(
+        { error: "Appointment not found" },
+        { status: 404 },
+      );
 
-    return NextResponse.json(
-      { appointmentId: result.insertId },
-      { status: 201 },
-    );
+    return NextResponse.json({ message: "Appointment updated" });
   } catch (err) {
     if (err instanceof z.ZodError)
       return NextResponse.json(
         { error: err.issues[0].message },
         { status: 400 },
       );
+    console.error(err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const companyId = getCompanyId(request);
+    if (!companyId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const [result]: any = await pool.query(
+      `DELETE FROM Appointment WHERE Appointment_ID = ? AND Company_ID = ?`,
+      [id, companyId],
+    );
+    if (result.affectedRows === 0)
+      return NextResponse.json(
+        { error: "Appointment not found" },
+        { status: 404 },
+      );
+
+    return NextResponse.json({ message: "Appointment deleted" });
+  } catch (err) {
     console.error(err);
     return NextResponse.json(
       { error: "Internal Server Error" },
