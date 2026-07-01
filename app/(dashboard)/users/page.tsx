@@ -60,8 +60,8 @@ function Skeleton({ className }: { className?: string }) {
 function RoleBadge({ role, primary }: { role: string; primary: string }) {
   return (
     <span
-      className="text-[10px] font-medium px-2 py-1 rounded-full"
-      style={{ color: primary, backgroundColor: primary + "20" }}
+      className="text-[10px] font-medium px-2 py-1 rounded-md border"
+      style={{ color: primary, borderColor: primary + "40" }}
     >
       {role}
     </span>
@@ -399,6 +399,7 @@ export default function UsersPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
+  const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -439,6 +440,7 @@ export default function UsersPage() {
       });
       setUsers(res.data.users);
       setTotal(res.data.total);
+      setRoleCounts(res.data.roleCounts ?? {});
     } catch {
       setError("Failed to load users.");
     } finally {
@@ -514,14 +516,6 @@ export default function UsersPage() {
       setError(err.response?.data?.error ?? "Failed to delete user.");
     }
   };
-
-  const roleCounts = ROLES.reduce(
-    (acc, r) => {
-      acc[r] = users.filter((u) => u.Role === r).length;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
 
   const searchParams = useSearchParams();
   useEffect(() => {
@@ -607,8 +601,8 @@ export default function UsersPage() {
             </div>
           </div>
 
-          {/* role stat pills */}
-          <div className="flex gap-3 flex-wrap">
+          {/* role filter chips */}
+          <div className="flex gap-2 flex-wrap">
             {ROLES.map((r) => {
               const RoleIcon = ROLE_ICONS[r];
               const active = roleFilter === r;
@@ -619,13 +613,17 @@ export default function UsersPage() {
                     setRoleFilter(active ? "" : r);
                     setPage(1);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all"
-                  style={{
-                    backgroundColor: active
-                      ? primaryColor
-                      : primaryColor + "15",
-                    color: active ? "#fff" : primaryColor,
-                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-medium transition-colors"
+                  style={
+                    active
+                      ? { borderColor: primaryColor, color: primaryColor }
+                      : {
+                          borderColor: dark
+                            ? "rgba(255,255,255,0.1)"
+                            : "#e5e7eb",
+                          color: dark ? "#6b7280" : "#9ca3af",
+                        }
+                  }
                 >
                   <RoleIcon size={11} />
                   {r}

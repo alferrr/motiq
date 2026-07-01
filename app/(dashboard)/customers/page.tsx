@@ -336,8 +336,8 @@ function CustomerDrawerContent({
                       {j.Make} {j.Model}
                     </p>
                     <span
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                      style={{ color: s.color, backgroundColor: s.bg }}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-md border"
+                      style={{ color: s.color, borderColor: s.color + "40" }}
                     >
                       {j.Status}
                     </span>
@@ -634,11 +634,7 @@ function CustomersPageInner() {
                       </td>
                       <td className="px-5 py-3 hidden md:table-cell">
                         <span
-                          className="text-xs font-medium px-2 py-0.5 rounded-full"
-                          style={{
-                            color: primaryColor,
-                            backgroundColor: primaryColor + "20",
-                          }}
+                          className={`text-xs font-medium px-2 py-0.5 rounded-md border ${dark ? "border-white/10 text-gray-300" : "border-gray-200 text-gray-600"}`}
                         >
                           {c.vehicleCount} vehicle
                           {c.vehicleCount !== 1 ? "s" : ""}

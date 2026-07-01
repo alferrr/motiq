@@ -396,8 +396,8 @@ function VehicleDrawerContent({
                   <div className="flex items-center justify-between mb-0.5">
                     <p className={`text-xs font-medium ${text}`}>#{j.Job_ID}</p>
                     <span
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                      style={{ color: s.color, backgroundColor: s.bg }}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-md border"
+                      style={{ color: s.color, borderColor: s.color + "40" }}
                     >
                       {j.Status}
                     </span>
@@ -757,11 +757,7 @@ export default function VehiclesPage() {
                       </td>
                       <td className="px-5 py-3 hidden md:table-cell">
                         <span
-                          className="text-xs font-medium px-2 py-0.5 rounded-full"
-                          style={{
-                            color: primaryColor,
-                            backgroundColor: primaryColor + "20",
-                          }}
+                          className={`text-xs font-medium px-2 py-0.5 rounded-md border ${dark ? "border-white/10 text-gray-300" : "border-gray-200 text-gray-600"}`}
                         >
                           {v.jobCount} job{v.jobCount !== 1 ? "s" : ""}
                         </span>

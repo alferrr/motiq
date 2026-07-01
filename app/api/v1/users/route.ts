@@ -59,7 +59,16 @@ export async function GET(request: NextRequest) {
       [auth.companyId, ...roleParam, like, like, like],
     );
 
-    return NextResponse.json({ users: rows, total, page, limit });
+    // per-role totals, independent of the role filter so the filter chips
+    // don't collapse to 0 once a role is selected
+    const [roleRows]: any = await pool.query(
+      `SELECT Role, COUNT(*) AS count FROM User WHERE Company_ID = ? GROUP BY Role`,
+      [auth.companyId],
+    );
+    const roleCounts: Record<string, number> = {};
+    for (const r of roleRows) roleCounts[r.Role] = r.count;
+
+    return NextResponse.json({ users: rows, total, page, limit, roleCounts });
   } catch (err) {
     console.error(err);
     return NextResponse.json(
