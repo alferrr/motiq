@@ -50,13 +50,25 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 250px;
+  width: 140px;
 
   .number {
-    font-size: 4rem;
+    font-size: 2.25rem;
   }
   p {
     text-align: center;
     font-weight: 200;
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    width: 250px;
+
+    .number {
+      font-size: 4rem;
+    }
+    p {
+      font-size: 1rem;
+    }
   }
 }

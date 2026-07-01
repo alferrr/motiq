@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type GlassCardProps = {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string; // Outer card
   contentClassName?: string; // Inner content wrapper
 };
