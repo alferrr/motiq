@@ -58,16 +58,19 @@ export const steps = [
     step: 1,
     title: "Register Customer & Vehicle",
     desc: "Record customer information, vehicle details, and reported issues into the system.",
+    image: "/vehicle.png",
   },
   {
     step: 2,
     title: "Manage Repair Process",
     desc: "Assign repair jobs, update service progress, and maintain detailed repair records.",
+    image: "/jobstatus.png",
   },
   {
     step: 3,
     title: "Generate Billing & Reports",
     desc: "Automatically compute labor and parts costs, print invoices, and maintain accurate financial records.",
+    image: "/invoice.png",
   },
 ];
 
@@ -348,7 +351,14 @@ const Hero = () => {
                 className="w-full md:w-100 min-h-100"
                 contentClassName=""
               >
-                <div className="photo h-50 border border-white/10 rounded-xl w-full"></div>
+                <div className="photo relative h-50 border border-white/10 rounded-xl w-full overflow-hidden">
+                  <Image
+                    src={step.image}
+                    alt={step.title}
+                    fill
+                    className="object-cover object-top"
+                  />
+                </div>
 
                 <div className="flex flex-col gap-2 mt-5">
                   <h2 className="font-sans text-xl">{step.title}</h2>
