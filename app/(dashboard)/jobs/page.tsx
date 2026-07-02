@@ -806,8 +806,9 @@ function JobDrawerContent({
 }
 
 export default function JobOrdersPage() {
-  const { dark, toggleTheme, primaryColor } = useTheme();
+  const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
+  const canAdd = userRole !== "Mechanic";
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
@@ -1000,17 +1001,19 @@ export default function JobOrdersPage() {
                   </option>
                 ))}
               </select>
-              <button
-                onClick={() => {
-                  setShowAdd(true);
-                  setServerError("");
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <FaPlus size={11} />
-                New Job Order
-              </button>
+              {canAdd && (
+                <button
+                  onClick={() => {
+                    setShowAdd(true);
+                    setServerError("");
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <FaPlus size={11} />
+                  New Job Order
+                </button>
+              )}
             </div>
           </div>
 

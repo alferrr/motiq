@@ -19,9 +19,20 @@ const PUBLIC_PATHS = [
 ];
 
 const ROLE_PATHS: Record<string, string[]> = {
+  // Admin only
   "/users": ["Admin"],
+  "/api/v1/users": ["Admin"],
   "/settings": ["Admin"],
-  "/reports": ["Admin", "Front Desk"],
+  "/api/v1/company": ["Admin"],
+  "/reports": ["Admin"],
+  "/api/v1/reports": ["Admin"],
+  // Admin + Front Desk (Mechanics don't need customer/billing data)
+  "/customers": ["Admin", "Front Desk"],
+  "/api/v1/customers": ["Admin", "Front Desk"],
+  "/invoices": ["Admin", "Front Desk"],
+  "/api/v1/invoices": ["Admin", "Front Desk"],
+  "/payments": ["Admin", "Front Desk"],
+  "/api/v1/payments": ["Admin", "Front Desk"],
 };
 
 export async function proxy(request: NextRequest) {

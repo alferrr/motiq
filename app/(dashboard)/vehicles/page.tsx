@@ -429,8 +429,9 @@ function VehicleDrawerContent({
 }
 
 export default function VehiclesPage() {
-  const { dark, toggleTheme, primaryColor } = useTheme();
+  const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
+  const canAdd = userRole !== "Mechanic";
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -643,17 +644,19 @@ export default function VehiclesPage() {
                   </button>
                 </div>
               )}
-              <button
-                onClick={() => {
-                  setShowAdd(true);
-                  setServerError("");
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <FaPlus size={11} />
-                Add Vehicle
-              </button>
+              {canAdd && (
+                <button
+                  onClick={() => {
+                    setShowAdd(true);
+                    setServerError("");
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <FaPlus size={11} />
+                  Add Vehicle
+                </button>
+              )}
             </div>
           </div>
 

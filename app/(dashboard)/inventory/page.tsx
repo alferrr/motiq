@@ -445,8 +445,9 @@ function PartDrawerContent({
 }
 
 export default function InventoryPage() {
-  const { dark, toggleTheme, primaryColor } = useTheme();
+  const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
+  const canAdd = userRole !== "Mechanic";
 
   const [parts, setParts] = useState<Part[]>([]);
   const [total, setTotal] = useState(0);
@@ -645,17 +646,19 @@ export default function InventoryPage() {
                   Out of stock {outCount > 0 ? `(${outCount})` : ""}
                 </option>
               </select>
-              <button
-                onClick={() => {
-                  setShowAdd(true);
-                  setServerError("");
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <FaPlus size={11} />
-                Add Part
-              </button>
+              {canAdd && (
+                <button
+                  onClick={() => {
+                    setShowAdd(true);
+                    setServerError("");
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <FaPlus size={11} />
+                  Add Part
+                </button>
+              )}
             </div>
           </div>
 

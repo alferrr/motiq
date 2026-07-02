@@ -66,6 +66,48 @@ const NAV_BOTTOM = [
   { label: "Help & Support", href: "/help" },
 ];
 
+// mirrors the access rules enforced in proxy.ts — kept in sync manually
+const ROLE_NAV: Record<string, string[]> = {
+  Admin: [
+    "/dashboard",
+    "/customers",
+    "/vehicles",
+    "/services",
+    "/jobs",
+    "/inventory",
+    "/invoices",
+    "/payments",
+    "/appointments",
+    "/reports",
+    "/users",
+  ],
+  "Front Desk": [
+    "/dashboard",
+    "/customers",
+    "/vehicles",
+    "/services",
+    "/jobs",
+    "/inventory",
+    "/invoices",
+    "/payments",
+    "/appointments",
+  ],
+  Mechanic: [
+    "/dashboard",
+    "/vehicles",
+    "/services",
+    "/jobs",
+    "/inventory",
+    "/appointments",
+  ],
+};
+
+const ROLE_NAV_BOTTOM: Record<string, string[]> = {
+  Admin: ["/settings", "/help"],
+  "Front Desk": ["/help"],
+  Mechanic: ["/help"],
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { open, setOpen } = useSidebar();
@@ -117,6 +159,18 @@ export default function Sidebar() {
     );
   };
 
+  // while userRole hasn't hydrated from localStorage yet, `visibleMain` /
+  // `visibleBottom` are null so we render skeleton bars instead of either an
+  // empty nav or briefly flashing the full unfiltered list
+  const visibleMain = userRole
+    ? NAV_MAIN.filter((item) => ROLE_NAV[userRole]?.includes(item.href))
+    : null;
+  const visibleBottom = userRole
+    ? NAV_BOTTOM.filter((item) =>
+        ROLE_NAV_BOTTOM[userRole]?.includes(item.href),
+      )
+    : null;
+
   // avatar initials from user name
   const initials = userName
     ? userName
@@ -162,21 +216,34 @@ export default function Sidebar() {
         </div>
 
         {/* main nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-0.5">
-          {NAV_MAIN.map((item, i) => (
-            <div
-              key={item.href}
-              className="transition-all duration-200"
-              style={{ transitionDelay: `${i * 20}ms` }}
-            >
-              <NavLink {...item} />
-            </div>
-          ))}
+        <nav
+          suppressHydrationWarning
+          className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-0.5"
+        >
+          {visibleMain === null
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-8 mx-3 my-0.5 rounded-lg animate-pulse bg-white/5"
+                />
+              ))
+            : visibleMain.map((item, i) => (
+                <div
+                  key={item.href}
+                  className="transition-all duration-200"
+                  style={{ transitionDelay: `${i * 20}ms` }}
+                >
+                  <NavLink {...item} />
+                </div>
+              ))}
         </nav>
 
         {/* bottom */}
-        <div className={`px-3 py-4 border-t ${border} flex flex-col gap-0.5`}>
-          {NAV_BOTTOM.map((item) => (
+        <div
+          suppressHydrationWarning
+          className={`px-3 py-4 border-t ${border} flex flex-col gap-0.5`}
+        >
+          {visibleBottom?.map((item) => (
             <NavLink key={item.href} {...item} />
           ))}
 

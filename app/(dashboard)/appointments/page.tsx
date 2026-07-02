@@ -387,8 +387,9 @@ function AppointmentDrawerContent({
 }
 
 export default function AppointmentsPage() {
-  const { dark, toggleTheme, primaryColor } = useTheme();
+  const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
+  const canAdd = userRole !== "Mechanic";
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -554,18 +555,20 @@ export default function AppointmentsPage() {
                 scheduled this month
               </p>
             </div>
-            <button
-              onClick={() => {
-                setShowAdd(true);
-                setServerError("");
-                setAddDate("");
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: primaryColor }}
-            >
-              <FaPlus size={11} />
-              Book Appointment
-            </button>
+            {canAdd && (
+              <button
+                onClick={() => {
+                  setShowAdd(true);
+                  setServerError("");
+                  setAddDate("");
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <FaPlus size={11} />
+                Book Appointment
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -724,19 +727,21 @@ export default function AppointmentsPage() {
                       <p className={`text-xs text-center ${muted}`}>
                         No appointments on this day.
                       </p>
-                      <button
-                        onClick={() => {
-                          setAddDate(
-                            `${year}-${pad(month + 1)}-${pad(selectedDay)}`,
-                          );
-                          setShowAdd(true);
-                          setServerError("");
-                        }}
-                        className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
-                        style={{ backgroundColor: primaryColor }}
-                      >
-                        + Book here
-                      </button>
+                      {canAdd && (
+                        <button
+                          onClick={() => {
+                            setAddDate(
+                              `${year}-${pad(month + 1)}-${pad(selectedDay)}`,
+                            );
+                            setShowAdd(true);
+                            setServerError("");
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          + Book here
+                        </button>
+                      )}
                     </div>
                   ) : (
                     selectedAppts.map((a) => {

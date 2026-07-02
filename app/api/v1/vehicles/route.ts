@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import { getCompanyId } from "@/lib/session";
+import { getCompanyId, getSession } from "@/lib/session";
 import { z } from "zod";
 
 const VehicleSchema = z.object({
@@ -76,9 +76,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
 
     const body = VehicleSchema.parse(await request.json());
 
