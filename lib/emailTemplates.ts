@@ -24,17 +24,10 @@ function shell(
     notice?: { title: string; text: string };
   },
 ) {
-  const initial = opts.companyName.charAt(0).toUpperCase();
   const year = new Date().getFullYear();
 
   const logoMark = `
-    <table cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
-      <tr>
-        <td width="48" height="48" style="background-color:${opts.themeColor};border-radius:12px;text-align:center;vertical-align:middle;">
-          <span style="display:inline-block;color:#ffffff;font-size:20px;font-weight:700;line-height:48px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${initial}</span>
-        </td>
-      </tr>
-    </table>`;
+    <p style="margin:0 0 20px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em;color:${opts.themeColor};">motiq</p>`;
 
   const ctaBlock = opts.cta
     ? `
@@ -47,7 +40,7 @@ function shell(
     </table>
     <p style="margin:0 0 24px;font-size:12px;color:#999999;text-align:center;">
       Or copy and paste this link into your browser:<br />
-      <span style="word-break:break-all;color:#666666;">${opts.cta.url}</span>
+      <a href="${opts.cta.url}" style="word-break:break-all;color:#111111;text-decoration:underline;">${opts.cta.url}</a>
     </p>`
     : "";
 
@@ -75,8 +68,12 @@ function shell(
     : "";
 
   const contactRows = [
-    opts.companyEmail ? `<span style="display:block;margin:0 0 4px;">${opts.companyEmail}</span>` : "",
-    opts.companyContact ? `<span style="display:block;margin:0 0 4px;">${opts.companyContact}</span>` : "",
+    opts.companyEmail
+      ? `<a href="mailto:${opts.companyEmail}" style="display:block;margin:0 0 4px;color:#111111;text-decoration:none;">${opts.companyEmail}</a>`
+      : "",
+    opts.companyContact
+      ? `<a href="tel:${opts.companyContact.replace(/[^+\d]/g, "")}" style="display:block;margin:0 0 4px;color:#111111;text-decoration:none;">${opts.companyContact}</a>`
+      : "",
   ]
     .filter(Boolean)
     .join("");
@@ -93,14 +90,21 @@ function shell(
     </tr>`
     : "";
 
+  const fontStack = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
   return `
 <!DOCTYPE html>
 <html>
-  <body style="margin:0;padding:0;background-color:#e9eaee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#e9eaee;padding:40px 16px;">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body style="margin:0;padding:0;background-color:#e9eaee;font-family:${fontStack};">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#e9eaee;padding:40px 16px;font-family:${fontStack};">
       <tr>
         <td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:20px;overflow:hidden;">
+          <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:20px;overflow:hidden;font-family:${fontStack};">
             <tr>
               <td style="padding:40px 40px 24px;text-align:center;">
                 ${logoMark}
@@ -130,7 +134,7 @@ function shell(
               <td style="background-color:#fafafa;padding:20px 40px;border-top:1px solid #eee;text-align:center;">
                 <p style="margin:0;font-size:11px;color:#999999;">© ${year} ${opts.companyName}. All rights reserved.</p>
                 ${opts.companyAddress ? `<p style="margin:4px 0 0;font-size:11px;color:#bbbbbb;">${opts.companyAddress}</p>` : ""}
-                <p style="margin:4px 0 0;font-size:11px;color:#cccccc;">Sent via Motiq</p>
+                <p style="margin:4px 0 0;font-size:11px;color:#cccccc;">Powered by Motiq</p>
               </td>
             </tr>
           </table>
