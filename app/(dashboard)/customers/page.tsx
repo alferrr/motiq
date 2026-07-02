@@ -19,6 +19,7 @@ type Customer = {
   Customer_ID: number;
   FullName: string;
   ContactNumber: string;
+  Email: string;
   Address: string;
   CreatedAt: string;
   vehicleCount: number;
@@ -29,6 +30,7 @@ type CustomerDetail = {
     Customer_ID: number;
     FullName: string;
     ContactNumber: string;
+    Email: string;
     Address: string;
     CreatedAt: string;
   };
@@ -53,7 +55,12 @@ type CustomerDetail = {
   }[];
 };
 
-type FormState = { fullName: string; contactNumber: string; address: string };
+type FormState = {
+  fullName: string;
+  contactNumber: string;
+  email: string;
+  address: string;
+};
 type FormErrors = Partial<Record<keyof FormState, string>>;
 
 const STATUS_LIGHT: Record<string, { color: string; bg: string }> = {
@@ -112,18 +119,23 @@ function CustomerForm({
   primary: string;
 }) {
   const [form, setForm] = useState<FormState>(
-    initial ?? { fullName: "", contactNumber: "", address: "" },
+    initial ?? { fullName: "", contactNumber: "", email: "", address: "" },
   );
   const [errors, setErrors] = useState<FormErrors>({});
 
   const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
     ${dark ? "border-white/10 text-white placeholder:text-gray-600" : "border-gray-200 text-gray-900 placeholder:text-gray-400"}`;
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const validate = () => {
     const e: FormErrors = {};
     if (!form.fullName.trim()) e.fullName = "Full name is required";
     if (!form.contactNumber.trim())
       e.contactNumber = "Contact number is required";
+    if (!form.email.trim()) e.email = "Email is required";
+    else if (!EMAIL_RE.test(form.email.trim()))
+      e.email = "Enter a valid email";
     setErrors(e);
     return !Object.keys(e).length;
   };
@@ -159,6 +171,20 @@ function CustomerForm({
         {errors.contactNumber && (
           <p className="text-red-400 text-xs">{errors.contactNumber}</p>
         )}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <p className={`text-xs ${muted}`}>Email</p>
+        <input
+          className={inputCls}
+          type="email"
+          placeholder="juan@example.com"
+          value={form.email}
+          onChange={(e) => {
+            setForm((p) => ({ ...p, email: e.target.value }));
+            setErrors((p) => ({ ...p, email: undefined }));
+          }}
+        />
+        {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
       </div>
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>
@@ -252,6 +278,7 @@ function CustomerDrawerContent({
             <p className={`text-xs ${muted}`}>
               {detail.customer.ContactNumber}
             </p>
+            <p className={`text-xs ${muted}`}>{detail.customer.Email}</p>
           </div>
         </div>
         {detail.customer.Address && (
@@ -568,6 +595,11 @@ function CustomersPageInner() {
                     Contact
                   </th>
                   <th
+                    className={`text-left px-5 py-3 font-medium ${muted} hidden md:table-cell`}
+                  >
+                    Email
+                  </th>
+                  <th
                     className={`text-left px-5 py-3 font-medium ${muted} hidden lg:table-cell`}
                   >
                     Address
@@ -588,7 +620,7 @@ function CustomersPageInner() {
                 {loading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 5 }).map((_, j) => (
+                      {Array.from({ length: 6 }).map((_, j) => (
                         <td key={j} className="px-5 py-3">
                           <Skeleton className="h-4 w-full" />
                         </td>
@@ -598,7 +630,7 @@ function CustomersPageInner() {
                 ) : !customers.length ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className={`px-5 py-12 text-center ${muted}`}
                     >
                       {search
@@ -623,6 +655,11 @@ function CustomersPageInner() {
                       </td>
                       <td className={`px-5 py-3 ${muted} hidden sm:table-cell`}>
                         {c.ContactNumber}
+                      </td>
+                      <td
+                        className={`px-5 py-3 ${muted} hidden md:table-cell truncate max-w-50`}
+                      >
+                        {c.Email}
                       </td>
                       <td
                         className={`px-5 py-3 ${muted} hidden lg:table-cell truncate max-w-[200px]`}
@@ -691,6 +728,7 @@ function CustomersPageInner() {
               initial={{
                 fullName: editTarget.FullName,
                 contactNumber: editTarget.ContactNumber,
+                email: editTarget.Email,
                 address: editTarget.Address,
               }}
               onSubmit={handleEdit}

@@ -6,6 +6,7 @@ import { z } from "zod";
 const UpdateSchema = z.object({
   fullName: z.string().min(1).optional(),
   contactNumber: z.string().min(1).optional(),
+  email: z.string().min(1, "Email is required").email("Enter a valid email").optional(),
   address: z.string().optional(),
 });
 
@@ -20,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const [[customer]]: any = await pool.query(
-      `SELECT Customer_ID, FullName, ContactNumber, Address, CreatedAt
+      `SELECT Customer_ID, FullName, ContactNumber, Email, Address, CreatedAt
        FROM Customer WHERE Customer_ID = ? AND Company_ID = ? LIMIT 1`,
       [id, companyId],
     );
@@ -75,6 +76,7 @@ export async function PUT(
     const fieldMap: Record<string, string> = {
       fullName: "FullName",
       contactNumber: "ContactNumber",
+      email: "Email",
       address: "Address",
     };
 

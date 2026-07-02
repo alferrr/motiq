@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
+import { invoiceGeneratedEmail } from "@/lib/emailTemplates";
 
 const CreateInvoiceSchema = z.object({
   jobId: z.coerce.number({ error: "Job is required" }),
@@ -98,10 +100,14 @@ export async function POST(request: NextRequest) {
     const body = CreateInvoiceSchema.parse(await request.json());
 
     const [[job]]: any = await pool.query(
-      `SELECT rj.Job_ID, rj.Status
+      `SELECT rj.Job_ID, rj.Status,
+              c.FullName AS customerName, c.Email AS customerEmail,
+              v.Make, v.Model,
+              co.Name AS companyName, co.ThemeColor
        FROM RepairJob rj
-       JOIN Vehicle  v ON v.Vehicle_ID = rj.Vehicle_ID
-       JOIN Customer c ON c.Customer_ID = v.Customer_ID
+       JOIN Vehicle  v  ON v.Vehicle_ID  = rj.Vehicle_ID
+       JOIN Customer c  ON c.Customer_ID = v.Customer_ID
+       JOIN Company  co ON co.Company_ID = c.Company_ID
        LEFT JOIN Invoice i ON i.Job_ID = rj.Job_ID
        WHERE rj.Job_ID = ? AND c.Company_ID = ? AND i.Invoice_ID IS NULL
        LIMIT 1`,
@@ -139,6 +145,19 @@ export async function POST(request: NextRequest) {
        VALUES (?, CURDATE(), ?, 'Unpaid')`,
       [body.jobId, totalAmount],
     );
+
+    if (job.customerEmail) {
+      const { subject, html } = invoiceGeneratedEmail({
+        companyName: job.companyName,
+        themeColor: job.ThemeColor,
+        customerName: job.customerName,
+        invoiceId: result.insertId,
+        vehicle: `${job.Make} ${job.Model}`,
+        totalAmount,
+        dateIssued: new Date().toISOString().slice(0, 10),
+      });
+      await sendEmail({ to: job.customerEmail, subject, html });
+    }
 
     return NextResponse.json(
       { invoiceId: result.insertId },

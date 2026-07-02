@@ -6,6 +6,7 @@ import { z } from "zod";
 const CustomerSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   contactNumber: z.string().min(1, "Contact number is required"),
+  email: z.string().min(1, "Email is required").email("Enter a valid email"),
   address: z.string().optional(),
 });
 
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     const like = `%${search}%`;
 
     const [rows]: any = await pool.query(
-      `SELECT c.Customer_ID, c.FullName, c.ContactNumber, c.Address, c.CreatedAt,
+      `SELECT c.Customer_ID, c.FullName, c.ContactNumber, c.Email, c.Address, c.CreatedAt,
               COUNT(v.Vehicle_ID) AS vehicleCount
        FROM Customer c
        LEFT JOIN Vehicle v ON v.Customer_ID = c.Customer_ID
@@ -64,9 +65,9 @@ export async function POST(request: NextRequest) {
     const body = CustomerSchema.parse(await request.json());
 
     const [result]: any = await pool.query(
-      `INSERT INTO Customer (Company_ID, FullName, ContactNumber, Address)
-       VALUES (?, ?, ?, ?)`,
-      [companyId, body.fullName, body.contactNumber, body.address ?? null],
+      `INSERT INTO Customer (Company_ID, FullName, ContactNumber, Email, Address)
+       VALUES (?, ?, ?, ?, ?)`,
+      [companyId, body.fullName, body.contactNumber, body.email, body.address ?? null],
     );
 
     return NextResponse.json({ customerId: result.insertId }, { status: 201 });

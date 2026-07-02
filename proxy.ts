@@ -3,12 +3,17 @@ import { getSession } from "@/lib/session";
 
 const PUBLIC_PATHS = [
   "/",
+  "/signin",
   "/register",
   "/register/success",
+  "/forgot",
+  "/reset-password",
   "/api/v1/auth/login",
   "/api/v1/auth/register",
   "/api/v1/auth/verify-company",
   "/api/v1/auth/logout",
+  "/api/v1/auth/forgot-password",
+  "/api/v1/auth/reset-password",
   "/api/v1/payment-callback",
   "/pay-status",
 ];

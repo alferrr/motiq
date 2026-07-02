@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
+import { appointmentConfirmationEmail } from "@/lib/emailTemplates";
 
 const AppointmentSchema = z.object({
   customerId: z.coerce.number({ error: "Customer is required" }),
@@ -104,6 +106,30 @@ export async function POST(request: NextRequest) {
         body.reason ?? null,
       ],
     );
+
+    const [[recipient]]: any = await pool.query(
+      `SELECT c.FullName AS customerName, c.Email AS customerEmail,
+              v.Make, v.Model,
+              co.Name AS companyName, co.ThemeColor
+       FROM Customer c
+       JOIN Vehicle v ON v.Vehicle_ID = ?
+       JOIN Company co ON co.Company_ID = c.Company_ID
+       WHERE c.Customer_ID = ? AND c.Company_ID = ?
+       LIMIT 1`,
+      [body.vehicleId, body.customerId, companyId],
+    );
+    if (recipient?.customerEmail) {
+      const { subject, html } = appointmentConfirmationEmail({
+        companyName: recipient.companyName,
+        themeColor: recipient.ThemeColor,
+        customerName: recipient.customerName,
+        vehicle: `${recipient.Make} ${recipient.Model}`,
+        date: body.appointmentDate,
+        time: body.appointmentTime,
+        reason: body.reason,
+      });
+      await sendEmail({ to: recipient.customerEmail, subject, html });
+    }
 
     return NextResponse.json(
       { appointmentId: result.insertId },

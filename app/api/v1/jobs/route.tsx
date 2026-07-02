@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
+import { jobOrderCreatedEmail } from "@/lib/emailTemplates";
 
 const JobSchema = z.object({
   vehicleId: z.coerce.number({ error: "Vehicle is required" }),
@@ -113,6 +115,30 @@ export async function POST(request: NextRequest) {
         body.reportedIssue ?? null,
       ],
     );
+
+    const [[recipient]]: any = await pool.query(
+      `SELECT c.FullName AS customerName, c.Email AS customerEmail,
+              v.Make, v.Model,
+              co.Name AS companyName, co.ThemeColor
+       FROM Vehicle v
+       JOIN Customer c ON c.Customer_ID = v.Customer_ID
+       JOIN Company co ON co.Company_ID = c.Company_ID
+       WHERE v.Vehicle_ID = ? AND c.Company_ID = ?
+       LIMIT 1`,
+      [body.vehicleId, companyId],
+    );
+    if (recipient?.customerEmail) {
+      const { subject, html } = jobOrderCreatedEmail({
+        companyName: recipient.companyName,
+        themeColor: recipient.ThemeColor,
+        customerName: recipient.customerName,
+        jobId: result.insertId,
+        vehicle: `${recipient.Make} ${recipient.Model}`,
+        jobDate: body.jobDate,
+        reportedIssue: body.reportedIssue,
+      });
+      await sendEmail({ to: recipient.customerEmail, subject, html });
+    }
 
     return NextResponse.json({ jobId: result.insertId }, { status: 201 });
   } catch (err) {

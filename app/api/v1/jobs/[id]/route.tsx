@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
+import { jobReadyEmail } from "@/lib/emailTemplates";
 
 const UpdateSchema = z.object({
   mechanicId: z.coerce.number().optional(),
@@ -92,6 +94,27 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = UpdateSchema.parse(await request.json());
+
+    // also doubles as an ownership check — Job_ID alone doesn't prove it
+    // belongs to this company
+    const [[recipient]]: any = await conn.query(
+      `SELECT rj.Status AS previousStatus,
+              c.FullName AS customerName, c.Email AS customerEmail,
+              v.Make, v.Model,
+              co.Name AS companyName, co.ThemeColor
+       FROM RepairJob rj
+       JOIN Vehicle  v  ON v.Vehicle_ID  = rj.Vehicle_ID
+       JOIN Customer c  ON c.Customer_ID = v.Customer_ID
+       JOIN Company  co ON co.Company_ID = c.Company_ID
+       WHERE rj.Job_ID = ? AND c.Company_ID = ?
+       LIMIT 1`,
+      [id, companyId],
+    );
+    if (!recipient) {
+      conn.release();
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
     await conn.beginTransaction();
 
     // update core fields
@@ -159,6 +182,22 @@ export async function PUT(
     }
 
     await conn.commit();
+
+    if (
+      body.status === "Completed" &&
+      recipient.previousStatus !== "Completed" &&
+      recipient.customerEmail
+    ) {
+      const { subject, html } = jobReadyEmail({
+        companyName: recipient.companyName,
+        themeColor: recipient.ThemeColor,
+        customerName: recipient.customerName,
+        jobId: Number(id),
+        vehicle: `${recipient.Make} ${recipient.Model}`,
+      });
+      await sendEmail({ to: recipient.customerEmail, subject, html });
+    }
+
     return NextResponse.json({ message: "Job updated" });
   } catch (err) {
     await conn.rollback();
