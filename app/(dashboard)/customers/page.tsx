@@ -90,7 +90,6 @@ function Avatar({ name, color }: { name: string; color: string }) {
   );
 }
 
-
 function CustomerForm({
   initial,
   onSubmit,
@@ -452,8 +451,6 @@ function CustomersPageInner() {
       setError(err.response?.data?.error ?? "Failed to delete customer.");
     }
   };
-
-  // ── hooks (all top-level, run on every render) ───────────────────────────────
 
   const searchParams = useSearchParams();
 

@@ -20,6 +20,13 @@ export async function GET(request: NextRequest) {
     const monthsBack = range === "1y" ? 12 : range === "6m" ? 6 : 1;
     const daysBack = range === "7d" ? 7 : range === "30d" ? 30 : null;
 
+    // shared range boundary — every query below (not just the revenue chart)
+    // should respect the selected range
+    const rangeStart = new Date();
+    if (daysBack) rangeStart.setDate(rangeStart.getDate() - daysBack);
+    else rangeStart.setMonth(rangeStart.getMonth() - monthsBack);
+    const rangeStartStr = rangeStart.toISOString().slice(0, 10);
+
     let revenueRows: any[];
     if (daysBack) {
       [revenueRows] = (await pool.query(
@@ -30,7 +37,7 @@ export async function GET(request: NextRequest) {
          JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
          JOIN Customer c ON c.Customer_ID = v.Customer_ID
          WHERE c.Company_ID = ? AND p.PaymentDate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-         GROUP BY DATE(p.PaymentDate)
+         GROUP BY DATE(p.PaymentDate), DATE_FORMAT(p.PaymentDate, '%b %d')
          ORDER BY DATE(p.PaymentDate) ASC`,
         [companyId, daysBack],
       )) as any;
@@ -54,9 +61,9 @@ export async function GET(request: NextRequest) {
        FROM RepairJob rj
        JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c ON c.Customer_ID = v.Customer_ID
-       WHERE c.Company_ID = ?
+       WHERE c.Company_ID = ? AND rj.JobDate >= ?
        GROUP BY rj.Status`,
-      [companyId],
+      [companyId, rangeStartStr],
     );
 
     const [categoryRows]: any = await pool.query(
@@ -66,11 +73,11 @@ export async function GET(request: NextRequest) {
        JOIN RepairJob rj ON rj.Job_ID = js.Job_ID
        JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c ON c.Customer_ID = v.Customer_ID
-       WHERE c.Company_ID = ?
+       WHERE c.Company_ID = ? AND rj.JobDate >= ?
        GROUP BY category
        ORDER BY revenue DESC
        LIMIT 6`,
-      [companyId],
+      [companyId, rangeStartStr],
     );
 
     const [mechanicRows]: any = await pool.query(
@@ -81,11 +88,11 @@ export async function GET(request: NextRequest) {
        JOIN User u ON u.User_ID = m.User_ID
        JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c ON c.Customer_ID = v.Customer_ID
-       WHERE c.Company_ID = ? AND rj.Status IN ('Completed', 'Released')
+       WHERE c.Company_ID = ? AND rj.Status IN ('Completed', 'Released') AND rj.JobDate >= ?
        GROUP BY u.User_ID, u.FullName
        ORDER BY jobCount DESC
        LIMIT 5`,
-      [companyId],
+      [companyId, rangeStartStr],
     );
 
     // ── summary stats ──────────────────────────────────────────────────────
@@ -96,16 +103,16 @@ export async function GET(request: NextRequest) {
        JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
        JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c ON c.Customer_ID = v.Customer_ID
-       WHERE c.Company_ID = ?`,
-      [companyId],
+       WHERE c.Company_ID = ? AND p.PaymentDate >= ?`,
+      [companyId, rangeStartStr],
     );
 
     const [[{ totalJobs }]]: any = await pool.query(
       `SELECT COUNT(*) AS totalJobs FROM RepairJob rj
        JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c ON c.Customer_ID = v.Customer_ID
-       WHERE c.Company_ID = ?`,
-      [companyId],
+       WHERE c.Company_ID = ? AND rj.JobDate >= ?`,
+      [companyId, rangeStartStr],
     );
 
     const [[{ avgJobValue }]]: any = await pool.query(
@@ -114,8 +121,8 @@ export async function GET(request: NextRequest) {
        JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
        JOIN Vehicle v ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c ON c.Customer_ID = v.Customer_ID
-       WHERE c.Company_ID = ?`,
-      [companyId],
+       WHERE c.Company_ID = ? AND i.DateIssued >= ?`,
+      [companyId, rangeStartStr],
     );
 
     const [[{ totalCustomers }]]: any = await pool.query(

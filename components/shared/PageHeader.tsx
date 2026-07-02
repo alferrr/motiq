@@ -57,8 +57,6 @@ const SEARCH_PAGES = [
   { label: "Payments", href: "/payments", icon: MdPayments },
 ];
 
-// ── notification panel ────────────────────────────────────────────────────────
-
 function NotificationPanel({
   dark,
   text,
@@ -109,7 +107,7 @@ function NotificationPanel({
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
 
   return (
-    <div className="absolute right-0 top-10 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden">
+    <div className="absolute right-0 top-10 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden bg-black border-white/10 border">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <p className={`text-sm font-semibold ${text}`}>Notifications</p>
