@@ -27,7 +27,8 @@ export async function POST(
     const [[invoice]]: any = await pool.query(
       `SELECT i.Invoice_ID,
               c.FullName AS customerName, c.Email AS customerEmail,
-              co.Name AS companyName, co.ThemeColor
+              co.Name AS companyName, co.ThemeColor,
+              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
        FROM Invoice i
        JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
        JOIN Vehicle  v  ON v.Vehicle_ID = rj.Vehicle_ID
@@ -52,6 +53,9 @@ export async function POST(
       const { subject, html } = paymentReceiptEmail({
         companyName: invoice.companyName,
         themeColor: invoice.ThemeColor,
+        companyEmail: invoice.companyEmail,
+        companyContact: invoice.companyContact,
+        companyAddress: invoice.companyAddress,
         customerName: invoice.customerName,
         invoiceId: Number(id),
         amountPaid: body.amount,

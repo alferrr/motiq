@@ -103,7 +103,8 @@ export async function POST(request: NextRequest) {
       `SELECT rj.Job_ID, rj.Status,
               c.FullName AS customerName, c.Email AS customerEmail,
               v.Make, v.Model,
-              co.Name AS companyName, co.ThemeColor
+              co.Name AS companyName, co.ThemeColor,
+              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
        FROM RepairJob rj
        JOIN Vehicle  v  ON v.Vehicle_ID  = rj.Vehicle_ID
        JOIN Customer c  ON c.Customer_ID = v.Customer_ID
@@ -150,6 +151,9 @@ export async function POST(request: NextRequest) {
       const { subject, html } = invoiceGeneratedEmail({
         companyName: job.companyName,
         themeColor: job.ThemeColor,
+        companyEmail: job.companyEmail,
+        companyContact: job.companyContact,
+        companyAddress: job.companyAddress,
         customerName: job.customerName,
         invoiceId: result.insertId,
         vehicle: `${job.Make} ${job.Model}`,

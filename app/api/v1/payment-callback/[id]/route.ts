@@ -56,7 +56,8 @@ export async function GET(
     if (payment.status === "succeeded" && !wasAlreadySucceeded) {
       const [[recipient]]: any = await pool.query(
         `SELECT c.FullName AS customerName, c.Email AS customerEmail,
-                co.Name AS companyName, co.ThemeColor
+                co.Name AS companyName, co.ThemeColor,
+                co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
          FROM Invoice i
          JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
          JOIN Vehicle  v  ON v.Vehicle_ID = rj.Vehicle_ID
@@ -70,6 +71,9 @@ export async function GET(
         const { subject, html } = paymentReceiptEmail({
           companyName: recipient.companyName,
           themeColor: recipient.ThemeColor,
+          companyEmail: recipient.companyEmail,
+          companyContact: recipient.companyContact,
+          companyAddress: recipient.companyAddress,
           customerName: recipient.customerName,
           invoiceId: Number(id),
           amountPaid: centavosToPesos(payment.amount),

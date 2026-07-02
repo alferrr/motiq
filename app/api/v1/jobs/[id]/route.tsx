@@ -101,7 +101,8 @@ export async function PUT(
       `SELECT rj.Status AS previousStatus,
               c.FullName AS customerName, c.Email AS customerEmail,
               v.Make, v.Model,
-              co.Name AS companyName, co.ThemeColor
+              co.Name AS companyName, co.ThemeColor,
+              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
        FROM RepairJob rj
        JOIN Vehicle  v  ON v.Vehicle_ID  = rj.Vehicle_ID
        JOIN Customer c  ON c.Customer_ID = v.Customer_ID
@@ -191,6 +192,9 @@ export async function PUT(
       const { subject, html } = jobReadyEmail({
         companyName: recipient.companyName,
         themeColor: recipient.ThemeColor,
+        companyEmail: recipient.companyEmail,
+        companyContact: recipient.companyContact,
+        companyAddress: recipient.companyAddress,
         customerName: recipient.customerName,
         jobId: Number(id),
         vehicle: `${recipient.Make} ${recipient.Model}`,

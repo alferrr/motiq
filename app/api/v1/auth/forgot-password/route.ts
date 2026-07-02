@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     const { companyId, email } = BodySchema.parse(await request.json());
 
     const [[user]]: any = await pool.query(
-      `SELECT u.User_ID, u.FullName, u.Email, co.Name AS companyName, co.ThemeColor
+      `SELECT u.User_ID, u.FullName, u.Email, co.Name AS companyName, co.ThemeColor,
+              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
        FROM User u
        JOIN Company co ON co.Company_ID = u.Company_ID
        WHERE u.Email = ? AND u.Company_ID = ?
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
       const { subject, html } = passwordResetEmail({
         companyName: user.companyName,
         themeColor: user.ThemeColor,
+        companyEmail: user.companyEmail,
+        companyContact: user.companyContact,
+        companyAddress: user.companyAddress,
         userName: user.FullName,
         resetUrl,
       });

@@ -110,7 +110,8 @@ export async function POST(request: NextRequest) {
     const [[recipient]]: any = await pool.query(
       `SELECT c.FullName AS customerName, c.Email AS customerEmail,
               v.Make, v.Model,
-              co.Name AS companyName, co.ThemeColor
+              co.Name AS companyName, co.ThemeColor,
+              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
        FROM Customer c
        JOIN Vehicle v ON v.Vehicle_ID = ?
        JOIN Company co ON co.Company_ID = c.Company_ID
@@ -122,6 +123,9 @@ export async function POST(request: NextRequest) {
       const { subject, html } = appointmentConfirmationEmail({
         companyName: recipient.companyName,
         themeColor: recipient.ThemeColor,
+        companyEmail: recipient.companyEmail,
+        companyContact: recipient.companyContact,
+        companyAddress: recipient.companyAddress,
         customerName: recipient.customerName,
         vehicle: `${recipient.Make} ${recipient.Model}`,
         date: body.appointmentDate,
