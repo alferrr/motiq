@@ -7,10 +7,7 @@ type CompanyInfo = {
 };
 
 function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function shell(
@@ -27,7 +24,7 @@ function shell(
   const year = new Date().getFullYear();
 
   const logoMark = `
-    <p style="margin:0 0 20px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em;color:${opts.themeColor};">motiq</p>`;
+    <p style="margin:0 0 20px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;font-weight:300;letter-spacing:-0.02em;color:${opts.themeColor};">MOTIQ</p>`;
 
   const ctaBlock = opts.cta
     ? `
@@ -90,7 +87,8 @@ function shell(
     </tr>`
     : "";
 
-  const fontStack = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  const fontStack =
+    "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
   return `
 <!DOCTYPE html>
@@ -213,7 +211,9 @@ export function jobOrderCreatedEmail(
         row("Job Order", `#${opts.jobId}`) +
         row("Vehicle", escapeHtml(opts.vehicle)) +
         row("Date", formatDate(opts.jobDate)) +
-        (opts.reportedIssue ? row("Reported Issue", escapeHtml(opts.reportedIssue)) : ""),
+        (opts.reportedIssue
+          ? row("Reported Issue", escapeHtml(opts.reportedIssue))
+          : ""),
     }),
   };
 }
@@ -234,7 +234,9 @@ export function jobReadyEmail(
       greetingName: opts.customerName,
       bodyText:
         "Your vehicle is ready for pickup. Please contact us to arrange a convenient time.",
-      detailsRows: row("Job Order", `#${opts.jobId}`) + row("Vehicle", escapeHtml(opts.vehicle)),
+      detailsRows:
+        row("Job Order", `#${opts.jobId}`) +
+        row("Vehicle", escapeHtml(opts.vehicle)),
     }),
   };
 }
@@ -246,6 +248,7 @@ export function invoiceGeneratedEmail(
     vehicle: string;
     totalAmount: number;
     dateIssued: string;
+    paymentUrl?: string | null;
   },
 ) {
   return {
@@ -255,12 +258,19 @@ export function invoiceGeneratedEmail(
       heading: "Invoice Generated",
       subheading: `Invoice from ${opts.companyName}`,
       greetingName: opts.customerName,
-      bodyText: `An invoice has been generated for your recent service. ${opts.companyName} will share a payment link with you shortly.`,
+      bodyText:
+        opts.paymentUrl && opts.totalAmount > 0
+          ? "An invoice has been generated for your recent service. You can pay online using the button below."
+          : `An invoice has been generated for your recent service. ${opts.companyName} will share a payment link with you shortly.`,
       detailsRows:
         row("Invoice", `#${opts.invoiceId}`) +
         row("Vehicle", escapeHtml(opts.vehicle)) +
         row("Date Issued", formatDate(opts.dateIssued)) +
         row("Amount Due", formatPeso(opts.totalAmount)),
+      cta:
+        opts.paymentUrl && opts.totalAmount > 0
+          ? { label: "Pay Now", url: opts.paymentUrl }
+          : undefined,
     }),
   };
 }
@@ -282,7 +292,8 @@ export function paymentReceiptEmail(
       heading: "Payment Receipt",
       subheading: "Thank you for your payment",
       greetingName: opts.customerName,
-      bodyText: "We've received your payment. This receipt is for your records.",
+      bodyText:
+        "We've received your payment. This receipt is for your records.",
       detailsRows:
         row("Invoice", `#${opts.invoiceId}`) +
         row("Amount Paid", formatPeso(opts.amountPaid)) +
