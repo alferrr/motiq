@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getSession } from "@/lib/session";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-
-function getAuth(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
-  if (!token) return null;
-  return jwt.verify(token, process.env.JWT_SECRET!) as any;
-}
 
 const UpdateSchema = z.object({
   fullName: z.string().min(1).optional(),
@@ -19,7 +13,7 @@ const UpdateSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = getAuth(request);
+    const auth = await getSession(request);
     if (!auth)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -43,7 +37,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = getAuth(request);
+    const auth = await getSession(request);
     if (!auth)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

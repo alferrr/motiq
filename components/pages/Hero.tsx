@@ -30,6 +30,7 @@ import GlassCard from "../ui/GlassCard";
 import CountUp from "../CountUp";
 
 import Image from "next/image";
+import Link from "next/link";
 
 export const carBrands = [
   { node: <SiToyota />, title: "Toyota" },
@@ -156,11 +157,18 @@ const Hero = () => {
             and growing auto repair businesses.
           </p>
           <nav className="flex flex-col sm:flex-row gap-3 items-center z-5 w-full sm:w-auto px-6 sm:px-0">
-            <Button text="Get Started Free" className="w-full sm:w-auto" />
-            <Button
-              text="Request a Demo"
-              className="bg-white text-black w-full sm:w-auto"
-            />
+            <Link
+              href="/register"
+              className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-[#0e61d5] font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
+            >
+              Get Started Free
+            </Link>
+            <Link
+              href="/sigin"
+              className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-white text-black font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
+            >
+              Sign In
+            </Link>
           </nav>
         </div>
         <Image

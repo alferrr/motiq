@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getSession } from "@/lib/session";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-
-function getAuth(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
-  if (!token) return null;
-  return jwt.verify(token, process.env.JWT_SECRET!) as any;
-}
 
 const UserSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -22,7 +16,7 @@ const UserSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = getAuth(request);
+    const auth = await getSession(request);
     if (!auth)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -81,7 +75,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const conn = await (pool as any).getConnection();
   try {
-    const auth = getAuth(request);
+    const auth = await getSession(request);
     if (!auth)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (auth.role !== "Admin")

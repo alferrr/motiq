@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
-
-function getCompanyId(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
-  if (!token) return null;
-  const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
-  return payload.companyId as string;
-}
 
 const JobSchema = z.object({
   vehicleId: z.coerce.number({ error: "Vehicle is required" }),
@@ -20,7 +13,7 @@ const JobSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const companyId = getCompanyId(request);
+    const companyId = await getCompanyId(request);
     if (!companyId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -103,7 +96,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const companyId = getCompanyId(request);
+    const companyId = await getCompanyId(request);
     if (!companyId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

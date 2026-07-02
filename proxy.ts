@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { getSession } from "@/lib/session";
 
 const PUBLIC_PATHS = [
   "/",
@@ -19,7 +19,7 @@ const ROLE_PATHS: Record<string, string[]> = {
   "/reports": ["Admin", "Front Desk"],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // allow public paths and static files
@@ -31,23 +31,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("token")?.value;
-
-  // no token — redirect to login
-  if (!token) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  // verify token
-  let payload: any;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
-    const { payload: p } = await jwtVerify(token, secret);
-    payload = p;
-  } catch {
+  // verify session (missing, invalid, or expired token all resolve to null)
+  const payload = await getSession(request);
+  if (!payload) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -76,5 +62,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|ttf|map)$).*)",
+  ],
 };

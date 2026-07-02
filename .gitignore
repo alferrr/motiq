@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+FUNCTIONAL_REQUIREMENTS.md
+KASA_CONTEXT.md

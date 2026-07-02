@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
-    if (!token)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    const companyId = payload.companyId;
+    const companyId = session.companyId;
 
     const today = new Date().toISOString().split("T")[0];
 

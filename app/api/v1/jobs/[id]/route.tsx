@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
-
-function getCompanyId(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
-  if (!token) return null;
-  const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
-  return payload.companyId as string;
-}
 
 const UpdateSchema = z.object({
   mechanicId: z.coerce.number().optional(),
@@ -30,7 +23,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const companyId = getCompanyId(request);
+    const companyId = await getCompanyId(request);
     if (!companyId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -94,7 +87,7 @@ export async function PUT(
   const conn = await (pool as any).getConnection();
   try {
     const { id } = await params;
-    const companyId = getCompanyId(request);
+    const companyId = await getCompanyId(request);
     if (!companyId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -190,7 +183,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const companyId = getCompanyId(request);
+    const companyId = await getCompanyId(request);
     if (!companyId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
-    if (!token)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    const userId = payload.id;
+    const userId = session.id;
 
     // get mechanic record for this user
     const [[mechanic]]: any = await pool.query(
