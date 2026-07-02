@@ -3,6 +3,8 @@ import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
 import { createInvoiceForJob } from "@/lib/invoices";
+import { sendEmail } from "@/lib/email";
+import { jobUpdatedEmail } from "@/lib/emailTemplates";
 
 const UpdateSchema = z.object({
   mechanicId: z.coerce.number().optional(),
@@ -178,17 +180,73 @@ export async function PUT(
 
     await conn.commit();
 
-    // auto-generate the invoice the moment a job first becomes Completed —
-    // createInvoiceForJob no-ops if one already exists, and emails the
-    // customer an invoice with a Kasa "Pay Now" link when there's a balance due.
-    // Runs after the commit, so a failure here must not turn an already-
-    // successful job update into a 500.
-    if (body.status === "Completed" && existing.previousStatus !== "Completed") {
-      try {
+    // Notify the customer about this update. Runs after the commit, so a
+    // failure here must not turn an already-successful job update into a 500.
+    const isFirstCompletion =
+      body.status === "Completed" && existing.previousStatus !== "Completed";
+    try {
+      if (isFirstCompletion) {
+        // auto-generate the invoice the moment a job first becomes Completed —
+        // createInvoiceForJob no-ops if one already exists, and emails the
+        // customer an invoice with a Kasa "Pay Now" link when there's a
+        // balance due. This *is* the notification for this transition, so we
+        // skip the generic job-updated email below to avoid double-emailing.
         await createInvoiceForJob(companyId, Number(id), request.nextUrl.origin);
-      } catch (invoiceErr) {
-        console.error("Auto-invoice generation failed:", invoiceErr);
+      } else {
+        // the template always shows the job's current status as a fixed
+        // field, so a status change is tracked separately here rather than
+        // duplicated into `changes` (which lists everything else that moved)
+        const statusChanged =
+          body.status !== undefined && body.status !== existing.previousStatus;
+
+        const changes: { label: string; value: string }[] = [];
+        if (body.diagnosis?.trim())
+          changes.push({ label: "Diagnosis", value: body.diagnosis });
+        if (body.mechanicId !== undefined)
+          changes.push({ label: "Mechanic", value: "Reassigned" });
+        if (body.serviceIds !== undefined || body.parts !== undefined)
+          changes.push({ label: "Work Items", value: "Services/parts updated" });
+
+        if (statusChanged || changes.length) {
+          const [[recipient]]: any = await pool.query(
+            `SELECT rj.Status AS currentStatus,
+                    c.FullName AS customerName, c.Email AS customerEmail,
+                    v.Make, v.Model,
+                    u.FullName AS mechanicName,
+                    co.Name AS companyName, co.ThemeColor,
+                    co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
+             FROM RepairJob rj
+             JOIN Vehicle  v  ON v.Vehicle_ID  = rj.Vehicle_ID
+             JOIN Customer c  ON c.Customer_ID = v.Customer_ID
+             JOIN Company  co ON co.Company_ID = c.Company_ID
+             JOIN Mechanic m  ON m.Mechanic_ID = rj.Mechanic_ID
+             JOIN User     u  ON u.User_ID     = m.User_ID
+             WHERE rj.Job_ID = ? AND c.Company_ID = ?
+             LIMIT 1`,
+            [id, companyId],
+          );
+          if (recipient?.customerEmail) {
+            const mechanicChange = changes.find((c) => c.label === "Mechanic");
+            if (mechanicChange) mechanicChange.value = recipient.mechanicName;
+
+            const { subject, html } = jobUpdatedEmail({
+              companyName: recipient.companyName,
+              themeColor: recipient.ThemeColor,
+              companyEmail: recipient.companyEmail,
+              companyContact: recipient.companyContact,
+              companyAddress: recipient.companyAddress,
+              customerName: recipient.customerName,
+              jobId: Number(id),
+              vehicle: `${recipient.Make} ${recipient.Model}`,
+              status: recipient.currentStatus,
+              changes,
+            });
+            await sendEmail({ to: recipient.customerEmail, subject, html });
+          }
+        }
       }
+    } catch (notifyErr) {
+      console.error("Job update notification failed:", notifyErr);
     }
 
     return NextResponse.json({ message: "Job updated" });

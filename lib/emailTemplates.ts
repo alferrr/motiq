@@ -143,10 +143,11 @@ function shell(
 </html>`;
 }
 
-function row(label: string, value: string) {
+function row(label: string, value: string, bold = false) {
+  const border = bold ? "border-top:1px solid #e5e5e5;padding-top:10px;" : "";
   return `<tr>
-    <td style="padding:6px 0;font-size:13px;color:#888888;">${label}</td>
-    <td style="padding:6px 0;font-size:13px;color:#111111;font-weight:500;text-align:right;">${value}</td>
+    <td style="padding:6px 0;font-size:13px;color:${bold ? "#111111" : "#888888"};font-weight:${bold ? 700 : 400};${border}">${label}</td>
+    <td style="padding:6px 0;font-size:13px;color:#111111;font-weight:${bold ? 700 : 500};text-align:right;${border}">${value}</td>
   </tr>`;
 }
 
@@ -241,6 +242,32 @@ export function jobReadyEmail(
   };
 }
 
+export function jobUpdatedEmail(
+  opts: CompanyInfo & {
+    customerName: string;
+    jobId: number;
+    vehicle: string;
+    status: string;
+    changes: { label: string; value: string }[];
+  },
+) {
+  return {
+    subject: `Job Order #${opts.jobId} Updated — ${opts.companyName}`,
+    html: shell({
+      ...opts,
+      heading: "Job Order Updated",
+      subheading: `Update on your vehicle at ${opts.companyName}`,
+      greetingName: opts.customerName,
+      bodyText: `There's an update on job order #${opts.jobId} for your ${escapeHtml(opts.vehicle)}.`,
+      detailsRows:
+        row("Job Order", `#${opts.jobId}`) +
+        row("Vehicle", escapeHtml(opts.vehicle)) +
+        row("Status", escapeHtml(opts.status)) +
+        opts.changes.map((c) => row(c.label, escapeHtml(c.value))).join(""),
+    }),
+  };
+}
+
 export function invoiceGeneratedEmail(
   opts: CompanyInfo & {
     customerName: string;
@@ -249,8 +276,13 @@ export function invoiceGeneratedEmail(
     totalAmount: number;
     dateIssued: string;
     paymentUrl?: string | null;
+    lineItems?: { label: string; amount: number }[];
   },
 ) {
+  const breakdownRows = (opts.lineItems ?? [])
+    .map((li) => row(escapeHtml(li.label), formatPeso(li.amount)))
+    .join("");
+
   return {
     subject: `Invoice #${opts.invoiceId} — ${formatPeso(opts.totalAmount)} Due`,
     html: shell({
@@ -260,13 +292,14 @@ export function invoiceGeneratedEmail(
       greetingName: opts.customerName,
       bodyText:
         opts.paymentUrl && opts.totalAmount > 0
-          ? "An invoice has been generated for your recent service. You can pay online using the button below."
-          : `An invoice has been generated for your recent service. ${opts.companyName} will share a payment link with you shortly.`,
+          ? "Your vehicle is now ready for pickup. An invoice has been generated for your recent service. You can pay online using the button below."
+          : `Your vehicle is now ready for pickup. An invoice has been generated for your recent service. ${opts.companyName} will share a payment link with you shortly.`,
       detailsRows:
         row("Invoice", `#${opts.invoiceId}`) +
         row("Vehicle", escapeHtml(opts.vehicle)) +
         row("Date Issued", formatDate(opts.dateIssued)) +
-        row("Amount Due", formatPeso(opts.totalAmount)),
+        breakdownRows +
+        row("Total Due", formatPeso(opts.totalAmount), true),
       cta:
         opts.paymentUrl && opts.totalAmount > 0
           ? { label: "Pay Now", url: opts.paymentUrl }

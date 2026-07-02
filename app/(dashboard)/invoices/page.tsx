@@ -15,6 +15,7 @@ import {
   FaCopy,
   FaCheck,
   FaSyncAlt,
+  FaMoneyBillWave,
 } from "react-icons/fa";
 import PageHeader from "@/components/shared/PageHeader";
 
@@ -310,6 +311,77 @@ function ManualPaymentForm({
           style={{ backgroundColor: primary }}
         >
           {loading ? "Saving…" : "Record Payment"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MarkPaidCashModal({
+  balance,
+  onSubmit,
+  onCancel,
+  loading,
+  serverError,
+  dark,
+  text,
+  muted,
+  primary,
+}: {
+  balance: number;
+  onSubmit: (referenceNumber?: string) => void;
+  onCancel: () => void;
+  loading: boolean;
+  serverError: string;
+  dark: boolean;
+  text: string;
+  muted: string;
+  primary: string;
+}) {
+  const [referenceNumber, setReferenceNumber] = useState("");
+
+  const inputCls = `w-full rounded-xl border px-4 py-2.5 text-sm bg-transparent outline-none transition-colors
+    ${dark ? "border-white/10 text-white placeholder:text-gray-600" : "border-gray-200 text-gray-900 placeholder:text-gray-400"}`;
+
+  return (
+    <div className="p-5 flex flex-col gap-4">
+      {serverError && <p className="text-red-400 text-xs">{serverError}</p>}
+      <div
+        className={`rounded-xl border px-4 py-3 flex items-center justify-between ${dark ? "border-white/10" : "border-gray-200"}`}
+      >
+        <span className={`text-xs ${muted}`}>Amount to mark paid</span>
+        <span className={`text-sm font-semibold ${text}`}>{peso(balance)}</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <p className={`text-xs ${muted}`}>
+          Receipt Reference Number <span className={muted}>(optional)</span>
+        </p>
+        <input
+          className={inputCls}
+          placeholder="e.g. OR-00123"
+          value={referenceNumber}
+          onChange={(e) => setReferenceNumber(e.target.value)}
+          onKeyDown={(e) =>
+            e.key === "Enter" && onSubmit(referenceNumber || undefined)
+          }
+          autoFocus
+        />
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button
+          onClick={onCancel}
+          className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
+            ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-500 hover:text-gray-900"}`}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => onSubmit(referenceNumber || undefined)}
+          disabled={loading}
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-60"
+          style={{ backgroundColor: primary }}
+        >
+          {loading ? "Saving…" : "Mark Paid"}
         </button>
       </div>
     </div>
@@ -650,6 +722,9 @@ function InvoicesPageInner() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
   const [drawerTarget, setDrawerTarget] = useState<number | null>(null);
+  const [markPaidTarget, setMarkPaidTarget] = useState<Invoice | null>(null);
+  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+  const [markPaidError, setMarkPaidError] = useState("");
 
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
@@ -692,6 +767,26 @@ function InvoicesPageInner() {
       setCreateError(err.response?.data?.error ?? "Failed to create invoice.");
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleMarkPaidCash = async (referenceNumber?: string) => {
+    if (!markPaidTarget) return;
+    setMarkPaidLoading(true);
+    setMarkPaidError("");
+    try {
+      const balance =
+        Number(markPaidTarget.TotalAmount) - Number(markPaidTarget.paidNet);
+      await axios.post(
+        `/api/v1/invoices/${markPaidTarget.Invoice_ID}/payments`,
+        { method: "Cash", amount: balance, referenceNumber },
+      );
+      setMarkPaidTarget(null);
+      fetchInvoices();
+    } catch (err: any) {
+      setMarkPaidError(err.response?.data?.error ?? "Failed to record payment.");
+    } finally {
+      setMarkPaidLoading(false);
     }
   };
 
@@ -839,13 +934,16 @@ function InvoicesPageInner() {
                   >
                     Issued
                   </th>
+                  <th className={`text-right px-5 py-3 font-medium ${muted}`}>
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${divide}`}>
                 {loading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
+                      {Array.from({ length: 7 }).map((_, j) => (
                         <td key={j} className="px-5 py-3">
                           <Skeleton className="h-4 w-full" />
                         </td>
@@ -854,7 +952,7 @@ function InvoicesPageInner() {
                   ))
                 ) : !invoices.length ? (
                   <tr>
-                    <td colSpan={6} className={`px-5 py-12 text-center ${muted}`}>
+                    <td colSpan={7} className={`px-5 py-12 text-center ${muted}`}>
                       {search
                         ? `No invoices matching "${search}"`
                         : "No invoices yet. Create one from a completed job."}
@@ -904,6 +1002,22 @@ function InvoicesPageInner() {
                             year: "numeric",
                           })}
                         </td>
+                        <td className="px-5 py-3 text-right">
+                          {balance > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMarkPaidError("");
+                                setMarkPaidTarget(inv);
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-medium transition-colors
+                                ${dark ? "border-white/10 text-gray-300 hover:text-white hover:border-white/20" : "border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300"}`}
+                            >
+                              <FaMoneyBillWave size={10} />
+                              Mark Paid
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })
@@ -927,6 +1041,31 @@ function InvoicesPageInner() {
               onCancel={() => setShowCreate(false)}
               loading={createLoading}
               serverError={createError}
+              dark={dark}
+              text={text}
+              muted={muted}
+              primary={primaryColor}
+            />
+          </Modal>
+        )}
+
+        {markPaidTarget && (
+          <Modal
+            title="Mark Paid — Cash"
+            onClose={() => setMarkPaidTarget(null)}
+            card={card}
+            text={text}
+            border={border}
+          >
+            <MarkPaidCashModal
+              balance={
+                Number(markPaidTarget.TotalAmount) -
+                Number(markPaidTarget.paidNet)
+              }
+              onSubmit={handleMarkPaidCash}
+              onCancel={() => setMarkPaidTarget(null)}
+              loading={markPaidLoading}
+              serverError={markPaidError}
               dark={dark}
               text={text}
               muted={muted}

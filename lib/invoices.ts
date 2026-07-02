@@ -68,21 +68,32 @@ export async function createInvoiceForJob(
   if (!["Completed", "Released"].includes(job.Status))
     return { ok: false, reason: "not_eligible" };
 
-  const [[{ totalLabor }]]: any = await pool.query(
-    `SELECT COALESCE(SUM(sc.LaborRate), 0) AS totalLabor
+  const [services]: any = await pool.query(
+    `SELECT sc.ServiceName, sc.LaborRate
      FROM JobService js
      JOIN ServiceCatalog sc ON sc.Service_ID = js.Service_ID
      WHERE js.Job_ID = ?`,
     [jobId],
   );
-  const [[{ totalParts }]]: any = await pool.query(
-    `SELECT COALESCE(SUM(pi.UnitPrice * jp.QuantityUsed), 0) AS totalParts
+  const [parts]: any = await pool.query(
+    `SELECT pi.PartName, jp.QuantityUsed, pi.UnitPrice
      FROM JobParts jp
      JOIN PartsInventory pi ON pi.Part_ID = jp.Part_ID
      WHERE jp.Job_ID = ?`,
     [jobId],
   );
-  const totalAmount = Number(totalLabor) + Number(totalParts);
+
+  const lineItems = [
+    ...services.map((s: any) => ({
+      label: s.ServiceName,
+      amount: Number(s.LaborRate),
+    })),
+    ...parts.map((p: any) => ({
+      label: `${p.PartName} × ${p.QuantityUsed}`,
+      amount: Number(p.UnitPrice) * p.QuantityUsed,
+    })),
+  ];
+  const totalAmount = lineItems.reduce((sum, li) => sum + li.amount, 0);
 
   const [result]: any = await pool.query(
     `INSERT INTO Invoice (Job_ID, DateIssued, TotalAmount, Status)
@@ -117,6 +128,7 @@ export async function createInvoiceForJob(
       totalAmount,
       dateIssued: new Date().toISOString().slice(0, 10),
       paymentUrl,
+      lineItems,
     });
     await sendEmail({ to: job.customerEmail, subject, html });
   }
