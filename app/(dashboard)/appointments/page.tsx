@@ -2,22 +2,17 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { useSidebar } from "@/context/SidebarContext";
 import Drawer from "@/components/shared/Drawer";
 import Modal from "@/components/shared/Modal";
 import SearchableSelect from "@/components/shared/SearchableSelect";
 import axios from "axios";
 import {
-  FaBars,
-  FaBell,
-  FaMoon,
-  FaSun,
-  FaSearch,
   FaPlus,
   FaChevronLeft,
   FaChevronRight,
+  FaCalendarAlt,
+  FaList,
 } from "react-icons/fa";
-import Header from "@/components/ui/Header";
 import PageHeader from "@/components/shared/PageHeader";
 
 type Appointment = {
@@ -112,7 +107,6 @@ function AppointmentForm({
   onCancel,
   loading,
   dark,
-  text,
   muted,
   border,
   primary,
@@ -124,7 +118,6 @@ function AppointmentForm({
   onCancel: () => void;
   loading: boolean;
   dark: boolean;
-  text: string;
   muted: string;
   border: string;
   primary: string;
@@ -291,8 +284,6 @@ function AppointmentDrawerContent({
   dark,
   text,
   muted,
-  border,
-  primary,
 }: {
   appt: Appointment;
   onStatusChange: (id: number, status: string) => void;
@@ -300,12 +291,8 @@ function AppointmentDrawerContent({
   dark: boolean;
   text: string;
   muted: string;
-  border: string;
-  primary: string;
 }) {
   const s = STATUS_STYLE[appt.Status];
-  const selectCls = `w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors
-    ${dark ? "border-white/10 text-white bg-[#111318]" : "border-gray-200 text-gray-900 bg-white"}`;
 
   return (
     <div className="p-5 flex flex-col gap-4">
@@ -389,8 +376,7 @@ function AppointmentDrawerContent({
 }
 
 export default function AppointmentsPage() {
-  const { dark, toggleTheme, primaryColor, userRole } = useTheme();
-  const { setOpen } = useSidebar();
+  const { dark, primaryColor, userRole } = useTheme();
   const canAdd = userRole !== "Mechanic";
 
   const now = new Date();
@@ -409,6 +395,8 @@ export default function AppointmentsPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [serverError, setServerError] = useState("");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState<"calendar" | "list">("calendar");
 
   const isDrawerOpen = drawerAppt !== null;
 
@@ -422,6 +410,8 @@ export default function AppointmentsPage() {
     ? "divide-white/5 border-white/5"
     : "divide-gray-100 border-gray-100";
   const border = dark ? "border-white/5" : "border-gray-100";
+  const thBg = dark ? "bg-white/3" : "bg-gray-50";
+  const hoverRow = dark ? "hover:bg-white/3" : "hover:bg-gray-50";
 
   const monthKey = `${year}-${pad(month + 1)}`;
 
@@ -445,6 +435,15 @@ export default function AppointmentsPage() {
     fetchAppointments();
   }, [fetchAppointments]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const value = (e as CustomEvent).detail as string;
+      setSearch(value);
+    };
+    window.addEventListener("page-search", handler);
+    return () => window.removeEventListener("page-search", handler);
+  }, []);
+
   // parse just the date part regardless of what MySQL returns
   const parseDate = (dateStr: string) => {
     const d = dateStr.split("T")[0]; // "2026-07-04"
@@ -452,8 +451,18 @@ export default function AppointmentsPage() {
     return new Date(y, m - 1, day);
   };
 
+  const q = search.trim().toLowerCase();
+  const filteredAppointments = q
+    ? appointments.filter((a) =>
+        [a.customerName, a.PlateNumber, a.Make, a.Model, a.Reason]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
+    : appointments;
+
   // group appointments by day
-  const apptsByDay = appointments.reduce<Record<number, Appointment[]>>(
+  const apptsByDay = filteredAppointments.reduce<Record<number, Appointment[]>>(
     (acc, a) => {
       const d = parseDate(a.AppointmentDate).getDate();
       if (!acc[d]) acc[d] = [];
@@ -462,6 +471,15 @@ export default function AppointmentsPage() {
     },
     {},
   );
+
+  const sortedAppointments = [...filteredAppointments].sort((a, b) => {
+    const dateDiff =
+      parseDate(a.AppointmentDate).getTime() -
+      parseDate(b.AppointmentDate).getTime();
+    return dateDiff !== 0
+      ? dateDiff
+      : a.AppointmentTime.localeCompare(b.AppointmentTime);
+  });
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDayIdx = getFirstDayOfMonth(year, month);
@@ -540,7 +558,7 @@ export default function AppointmentsPage() {
       >
         <PageHeader title="Appointments" />
 
-        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0 [&>*]:shrink-0">
+        <main className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto min-h-0 *:shrink-0">
           {error && (
             <div
               className={`rounded-xl border px-4 py-3 text-sm ${dark ? "bg-red-900/20 border-red-800/50 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -553,26 +571,161 @@ export default function AppointmentsPage() {
             <div>
               <h1 className={`text-lg font-semibold ${text}`}>Appointments</h1>
               <p className={`text-sm mt-0.5 ${muted}`}>
-                {appointments.filter((a) => a.Status === "Scheduled").length}{" "}
+                {
+                  filteredAppointments.filter((a) => a.Status === "Scheduled")
+                    .length
+                }{" "}
                 scheduled this month
               </p>
             </div>
-            {canAdd && (
-              <button
-                onClick={() => {
-                  setShowAdd(true);
-                  setServerError("");
-                  setAddDate("");
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: primaryColor }}
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex items-center gap-0.5 p-0.5 rounded-full border ${dark ? "border-white/5 bg-white/3" : "border-gray-200 bg-gray-100"}`}
               >
-                <FaPlus size={11} />
-                Book Appointment
-              </button>
-            )}
+                {(
+                  [
+                    { key: "calendar", label: "Calendar", Icon: FaCalendarAlt },
+                    { key: "list", label: "List", Icon: FaList },
+                  ] as const
+                ).map(({ key, label, Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setView(key)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                    style={
+                      view === key
+                        ? {
+                            backgroundColor: dark ? "#fff" : "#111",
+                            color: dark ? "#111" : "#fff",
+                          }
+                        : { color: dark ? "#6b7280" : "#9ca3af" }
+                    }
+                  >
+                    <Icon size={10} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {canAdd && (
+                <button
+                  onClick={() => {
+                    setShowAdd(true);
+                    setServerError("");
+                    setAddDate("");
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <FaPlus size={11} />
+                  Book Appointment
+                </button>
+              )}
+            </div>
           </div>
 
+          {view === "list" ? (
+            <div className={`rounded-2xl border overflow-hidden ${card}`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className={thBg}>
+                      <th
+                        className={`text-left font-medium text-xs px-5 py-3 ${muted}`}
+                      >
+                        Date & Time
+                      </th>
+                      <th
+                        className={`text-left font-medium text-xs px-5 py-3 ${muted}`}
+                      >
+                        Customer
+                      </th>
+                      <th
+                        className={`text-left font-medium text-xs px-5 py-3 ${muted}`}
+                      >
+                        Vehicle
+                      </th>
+                      <th
+                        className={`text-left font-medium text-xs px-5 py-3 ${muted}`}
+                      >
+                        Reason
+                      </th>
+                      <th
+                        className={`text-left font-medium text-xs px-5 py-3 ${muted}`}
+                      >
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${divide}`}>
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i}>
+                          <td className="px-5 py-3.5" colSpan={5}>
+                            <Skeleton className="h-4 w-full" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : !sortedAppointments.length ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className={`px-5 py-10 text-center text-xs ${muted}`}
+                        >
+                          {q
+                            ? `No appointments matching "${search}".`
+                            : "No appointments this month."}
+                        </td>
+                      </tr>
+                    ) : (
+                      sortedAppointments.map((a) => {
+                        const s = STATUS_STYLE[a.Status];
+                        return (
+                          <tr
+                            key={a.Appointment_ID}
+                            onClick={() => setDrawerAppt(a)}
+                            className={`cursor-pointer transition-colors ${hoverRow}`}
+                          >
+                            <td className={`px-5 py-3.5 whitespace-nowrap ${text}`}>
+                              {parseDate(a.AppointmentDate).toLocaleDateString(
+                                "en-PH",
+                                { month: "short", day: "numeric" },
+                              )}{" "}
+                              · {fmtTime(a.AppointmentTime)}
+                            </td>
+                            <td className={`px-5 py-3.5 font-medium ${text}`}>
+                              {a.customerName}
+                            </td>
+                            <td className={`px-5 py-3.5 ${muted}`}>
+                              {a.Make} {a.Model}{" "}
+                              <span className="font-mono text-xs">
+                                ({a.PlateNumber})
+                              </span>
+                            </td>
+                            <td
+                              className={`px-5 py-3.5 max-w-55 truncate ${muted}`}
+                            >
+                              {a.Reason || "—"}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span
+                                className="text-[10px] font-medium px-2 py-1 rounded-full"
+                                style={{
+                                  color: s.color,
+                                  backgroundColor: s.bg,
+                                }}
+                              >
+                                {a.Status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div
               className={`lg:col-span-2 rounded-2xl border overflow-hidden ${card}`}
@@ -615,10 +768,6 @@ export default function AppointmentsPage() {
                   const dayAppts = isValid ? (apptsByDay[dayNum] ?? []) : [];
                   const isToday = isValid && isCurrentMonth && dayNum === today;
                   const isSelected = isValid && selectedDay === dayNum;
-                  const scheduledAppts = dayAppts.filter(
-                    (a) => a.Status === "Scheduled",
-                  );
-                  const hasAppts = dayAppts.length > 0;
 
                   return (
                     <div
@@ -626,7 +775,7 @@ export default function AppointmentsPage() {
                       onClick={() =>
                         isValid && setSelectedDay(isSelected ? null : dayNum)
                       }
-                      className={`relative min-h-[72px] p-2 border-b border-r transition-colors
+                      className={`relative min-h-18 p-2 border-b border-r transition-colors
                         ${border}
                         ${isValid ? "cursor-pointer" : ""}
                         ${isSelected ? "" : isValid ? (dark ? "hover:bg-white/3" : "hover:bg-gray-50") : ""}
@@ -791,7 +940,7 @@ export default function AppointmentsPage() {
                           <Skeleton className="h-8 w-full" />
                         </div>
                       ))
-                    : appointments
+                    : filteredAppointments
                         .filter(
                           (a) =>
                             a.Status === "Scheduled" &&
@@ -828,8 +977,9 @@ export default function AppointmentsPage() {
                           </div>
                         ))}
                   {!loading &&
-                    appointments.filter((a) => a.Status === "Scheduled")
-                      .length === 0 && (
+                    filteredAppointments.filter(
+                      (a) => a.Status === "Scheduled",
+                    ).length === 0 && (
                       <p className={`px-5 py-5 text-xs ${muted}`}>
                         No upcoming appointments.
                       </p>
@@ -838,6 +988,7 @@ export default function AppointmentsPage() {
               </div>
             </div>
           </div>
+          )}
         </main>
 
         {showAdd && (
@@ -865,7 +1016,6 @@ export default function AppointmentsPage() {
               }}
               loading={formLoading}
               dark={dark}
-              text={text}
               muted={muted}
               border={border}
               primary={primaryColor}
@@ -926,8 +1076,6 @@ export default function AppointmentsPage() {
             dark={dark}
             text={text}
             muted={muted}
-            border={border}
-            primary={primaryColor}
           />
         )}
       </Drawer>

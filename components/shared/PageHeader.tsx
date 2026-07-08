@@ -197,12 +197,12 @@ function SearchBar({
   dark,
   muted,
   primary,
-  isDashboard,
+  showSuggestions,
 }: {
   dark: boolean;
   muted: string;
   primary: string;
-  isDashboard: boolean;
+  showSuggestions: boolean;
 }) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -212,9 +212,9 @@ function SearchBar({
 
   useEffect(() => {
     setValue("");
-  }, [isDashboard]);
+  }, [showSuggestions]);
 
-  const showDropdown = isDashboard && focused && value.trim().length > 0;
+  const showDropdown = showSuggestions && focused && value.trim().length > 0;
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {
@@ -236,12 +236,12 @@ function SearchBar({
     setFocused(false);
   };
 
-  // on non-dashboard pages, broadcast the search value so the page can filter its own data
+  // on pages without suggestion-style search, broadcast the value so the page can filter its own data
   useEffect(() => {
-    if (!isDashboard) {
+    if (!showSuggestions) {
       window.dispatchEvent(new CustomEvent("page-search", { detail: value }));
     }
-  }, [value, isDashboard]);
+  }, [value, showSuggestions]);
 
   return (
     <div
@@ -258,7 +258,7 @@ function SearchBar({
           ref={inputRef}
           className={`bg-transparent outline-none w-full text-xs
             ${dark ? "text-gray-300 placeholder:text-gray-600" : "text-gray-700 placeholder:text-gray-400"}`}
-          placeholder={isDashboard ? "Search anything..." : "Search..."}
+          placeholder={showSuggestions ? "Search anything..." : "Search..."}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -267,7 +267,7 @@ function SearchBar({
               setFocused(false);
               inputRef.current?.blur();
             }
-            if (e.key === "Enter" && isDashboard && value.trim()) {
+            if (e.key === "Enter" && showSuggestions && value.trim()) {
               handleSuggestion(SEARCH_PAGES[0].href);
             }
           }}
@@ -329,7 +329,10 @@ export default function PageHeader({ title }: PageHeaderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  const isDashboard = pathname === "/dashboard";
+  // Reports has no filterable list of its own, so it gets the same
+  // "search in..." suggestion dropdown as the dashboard instead of
+  // broadcasting keystrokes for a page to filter locally.
+  const showSuggestions = pathname === "/dashboard" || pathname === "/reports";
 
   const text = dark ? "text-white" : "text-gray-900";
   const muted = dark ? "text-gray-500" : "text-gray-400";
@@ -386,7 +389,7 @@ export default function PageHeader({ title }: PageHeaderProps) {
         dark={dark}
         muted={muted}
         primary={primaryColor}
-        isDashboard={isDashboard}
+        showSuggestions={showSuggestions}
       />
 
       <div className="flex items-center gap-2">

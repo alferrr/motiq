@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LineWaves from "@/components/LineWaves";
 import Button from "@/components/ui/Button";
 
@@ -12,9 +12,14 @@ import { useTheme } from "@/context/ThemeContext";
 import z from "zod";
 
 type CompanyFormType = { companyId: string };
+type Step = "welcome" | "company" | "staff";
+
+const LAST_COMPANY_ID_KEY = "motiq-last-company-id";
+const LAST_COMPANY_NAME_KEY = "motiq-last-company-name";
+const LAST_COMPANY_COLOR_KEY = "motiq-last-company-color";
 
 export default function Page() {
-  const [step, setStep] = useState<"company" | "staff">("company");
+  const [step, setStep] = useState<Step>("company");
   const [loading, setLoading] = useState(false);
 
   const [companyForm, setCompanyForm] = useState<CompanyFormType>({
@@ -36,6 +41,44 @@ export default function Page() {
   const { setPrimaryColor, setCompanyName, setUserName, setUserRole } =
     useTheme();
   const router = useRouter();
+
+  // remember the last company signed into on this device, if any
+  useEffect(() => {
+    try {
+      const lastId = localStorage.getItem(LAST_COMPANY_ID_KEY);
+      if (!lastId) return;
+
+      const lastName = localStorage.getItem(LAST_COMPANY_NAME_KEY);
+      const lastColor = localStorage.getItem(LAST_COMPANY_COLOR_KEY);
+
+      setCompanyForm({ companyId: lastId });
+      setLocalCompanyName(lastName ?? "");
+      setCompanyColor(lastColor ?? "#2563eb");
+      setStep("welcome");
+    } catch {
+      // localStorage unavailable (private browsing, disabled storage, etc.)
+      // — fall back to the normal company-id step.
+    }
+  }, []);
+
+  // ── Forget remembered company (used by welcome step + step 2 back button) ──
+  const handleForgetCompany = () => {
+    try {
+      localStorage.removeItem(LAST_COMPANY_ID_KEY);
+      localStorage.removeItem(LAST_COMPANY_NAME_KEY);
+      localStorage.removeItem(LAST_COMPANY_COLOR_KEY);
+    } catch {
+      // ignore — worst case the stale keys get overwritten on next login
+    }
+    setCompanyForm({ companyId: "" });
+    setLocalCompanyName("");
+    setCompanyColor("#2563eb");
+    setCompanyError("");
+    setServerError("");
+    setLoginErrors({});
+    setLoginForm({ email: "", password: "" });
+    setStep("company");
+  };
 
   // ── Step 1: verify company ──────────────────────────────────────────────
   const handleCompanySubmit = async () => {
@@ -97,6 +140,19 @@ export default function Page() {
       if (res.data.user?.companyName) setCompanyName(res.data.user.companyName);
       if (res.data.user?.fullName) setUserName(res.data.user.fullName);
       if (res.data.user?.role) setUserRole(res.data.user.role);
+
+      try {
+        localStorage.setItem(LAST_COMPANY_ID_KEY, companyForm.companyId);
+        if (res.data.user?.companyName) {
+          localStorage.setItem(LAST_COMPANY_NAME_KEY, res.data.user.companyName);
+        }
+        if (res.data.user?.themeColor) {
+          localStorage.setItem(LAST_COMPANY_COLOR_KEY, res.data.user.themeColor);
+        }
+      } catch {
+        // non-critical convenience persistence — ignore failures
+      }
+
       router.push("/dashboard");
     } catch (err: any) {
       setServerError(err.response?.data?.error ?? "Login failed.");
@@ -137,7 +193,7 @@ export default function Page() {
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors"
             style={
-              step === "company"
+              step !== "staff"
                 ? { backgroundColor: companyColor, color: "#fff" }
                 : { backgroundColor: companyColor + "4d", color: companyColor }
             }
@@ -178,7 +234,14 @@ export default function Page() {
         {/* heading */}
         <div className="flex flex-col gap-2">
           <p className="text-4xl font-light leading-tight">
-            {step === "company" ? (
+            {step === "welcome" ? (
+              <>
+                Continue as{" "}
+                <span style={{ color: companyColor }}>
+                  {companyName || "your company"}
+                </span>
+              </>
+            ) : step === "company" ? (
               "Enter your Company ID"
             ) : (
               <>
@@ -190,11 +253,31 @@ export default function Page() {
             )}
           </p>
           <p className="font-light text-white/50 text-sm">
-            {step === "company"
-              ? "Your garage admin provides this ID."
-              : "Sign in with your staff credentials."}
+            {step === "welcome"
+              ? "We remembered your last company on this device."
+              : step === "company"
+                ? "Your garage admin provides this ID."
+                : "Sign in with your staff credentials."}
           </p>
         </div>
+
+        {/* step 0: remembered company */}
+        {step === "welcome" && (
+          <div className="flex flex-col gap-4">
+            <Button
+              text={`Continue as ${companyName || "your company"}`}
+              onClick={() => setStep("staff")}
+              style={{ backgroundColor: companyColor }}
+            />
+            <button
+              onClick={handleForgetCompany}
+              className="text-white/40 hover:text-white/70 text-sm transition-colors w-fit mx-auto"
+            >
+              Not {companyName || "this company"}? Sign in to a different
+              company
+            </button>
+          </div>
+        )}
 
         {/* step 1 */}
         {step === "company" && (
@@ -228,14 +311,7 @@ export default function Page() {
         {step === "staff" && (
           <div className="flex flex-col gap-4">
             <button
-              onClick={() => {
-                setStep("company");
-                setServerError("");
-                setLoginErrors({});
-                setLoginForm({ email: "", password: "" });
-                setLocalCompanyName("");
-                setCompanyColor("#2563eb");
-              }}
+              onClick={handleForgetCompany}
               className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors w-fit -mt-2"
             >
               <svg

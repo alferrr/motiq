@@ -387,6 +387,15 @@ export default function ServicesPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const value = (e as CustomEvent).detail as string;
+      setSearchInput(value);
+    };
+    window.addEventListener("page-search", handler);
+    return () => window.removeEventListener("page-search", handler);
+  }, []);
+
   const handleAdd = async (data: FormState) => {
     setFormLoading(true);
     setServerError("");
