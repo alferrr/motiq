@@ -85,9 +85,65 @@ A marketing landing page and an unauthenticated payment-status confirmation page
 
 ## Getting Started
 
+### Prerequisites
+- Node.js 20+
+- A MySQL database
+
+### 1. Install dependencies
 ```bash
 npm install
+```
+
+### 2. Configure environment variables
+Create a `.env.local` file in the project root:
+```bash
+# Database
+MYSQL_HOST=
+MYSQL_PORT=3306
+MYSQL_USER=
+MYSQL_PASSWORD=
+MYSQL_DATABASE=
+
+# Auth
+JWT_SECRET=
+
+# Email (Resend)
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+
+# Kasa payment gateway
+KASA_BASE_URL=
+KASA_SECRET_KEY=
+```
+
+### 3. Set up the database
+Apply the schema, then run the migrations in `db/migrations/` in order against your MySQL database (e.g. `mysql < db/migrations/00X_*.sql`).
+
+### 4. Run the dev server
+```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+### Other scripts
+```bash
+npm run build   # production build
+npm run start   # run a production build
+npm run lint    # lint the codebase
+```
+
+## Contributing
+
+This repository is maintained by the team listed above as part of a course requirement. If you're on the team:
+
+1. Branch off `main` for your feature/fix (`git checkout -b feature/short-description`).
+2. Keep commits scoped and descriptive.
+3. Open a pull request into `main` for review before merging.
+4. Make sure `npm run lint` and `npm run build` pass before requesting review.
+
+This project isn't currently open to outside contributions, since it's tied to a specific academic submission.
+
+## License
+
+This project was built to fulfill a course requirement for **Information Management 2** and is intended for educational purposes only — it is not licensed for production or commercial use. All rights reserved by the team members listed above unless otherwise agreed.
