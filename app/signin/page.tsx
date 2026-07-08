@@ -17,6 +17,7 @@ type Step = "welcome" | "company" | "staff";
 const LAST_COMPANY_ID_KEY = "motiq-last-company-id";
 const LAST_COMPANY_NAME_KEY = "motiq-last-company-name";
 const LAST_COMPANY_COLOR_KEY = "motiq-last-company-color";
+const LAST_COMPANY_LOGO_KEY = "motiq-last-company-logo";
 
 export default function Page() {
   const [step, setStep] = useState<Step>("company");
@@ -27,6 +28,7 @@ export default function Page() {
   });
   const [companyName, setLocalCompanyName] = useState("");
   const [companyColor, setCompanyColor] = useState("#2563eb");
+  const [companyLogoSlug, setCompanyLogoSlug] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState("");
 
   const [loginForm, setLoginForm] = useState<LoginFormType>({
@@ -50,10 +52,12 @@ export default function Page() {
 
       const lastName = localStorage.getItem(LAST_COMPANY_NAME_KEY);
       const lastColor = localStorage.getItem(LAST_COMPANY_COLOR_KEY);
+      const lastLogo = localStorage.getItem(LAST_COMPANY_LOGO_KEY);
 
       setCompanyForm({ companyId: lastId });
       setLocalCompanyName(lastName ?? "");
       setCompanyColor(lastColor ?? "#2563eb");
+      setCompanyLogoSlug(lastLogo ?? null);
       setStep("welcome");
     } catch {
       // localStorage unavailable (private browsing, disabled storage, etc.)
@@ -67,12 +71,14 @@ export default function Page() {
       localStorage.removeItem(LAST_COMPANY_ID_KEY);
       localStorage.removeItem(LAST_COMPANY_NAME_KEY);
       localStorage.removeItem(LAST_COMPANY_COLOR_KEY);
+      localStorage.removeItem(LAST_COMPANY_LOGO_KEY);
     } catch {
       // ignore — worst case the stale keys get overwritten on next login
     }
     setCompanyForm({ companyId: "" });
     setLocalCompanyName("");
     setCompanyColor("#2563eb");
+    setCompanyLogoSlug(null);
     setCompanyError("");
     setServerError("");
     setLoginErrors({});
@@ -80,7 +86,6 @@ export default function Page() {
     setStep("company");
   };
 
-  // ── Step 1: verify company ──────────────────────────────────────────────
   const handleCompanySubmit = async () => {
     setCompanyError("");
 
@@ -106,7 +111,6 @@ export default function Page() {
     }
   };
 
-  // ── Step 2: staff login ─────────────────────────────────────────────────
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginForm((prev) => ({ ...prev, [name]: value }));
@@ -140,14 +144,26 @@ export default function Page() {
       if (res.data.user?.companyName) setCompanyName(res.data.user.companyName);
       if (res.data.user?.fullName) setUserName(res.data.user.fullName);
       if (res.data.user?.role) setUserRole(res.data.user.role);
+      setCompanyLogoSlug(res.data.user?.logoSlug ?? null);
 
       try {
         localStorage.setItem(LAST_COMPANY_ID_KEY, companyForm.companyId);
         if (res.data.user?.companyName) {
-          localStorage.setItem(LAST_COMPANY_NAME_KEY, res.data.user.companyName);
+          localStorage.setItem(
+            LAST_COMPANY_NAME_KEY,
+            res.data.user.companyName,
+          );
         }
         if (res.data.user?.themeColor) {
-          localStorage.setItem(LAST_COMPANY_COLOR_KEY, res.data.user.themeColor);
+          localStorage.setItem(
+            LAST_COMPANY_COLOR_KEY,
+            res.data.user.themeColor,
+          );
+        }
+        if (res.data.user?.logoSlug) {
+          localStorage.setItem(LAST_COMPANY_LOGO_KEY, res.data.user.logoSlug);
+        } else {
+          localStorage.removeItem(LAST_COMPANY_LOGO_KEY);
         }
       } catch {
         // non-critical convenience persistence — ignore failures
@@ -264,11 +280,43 @@ export default function Page() {
         {/* step 0: remembered company */}
         {step === "welcome" && (
           <div className="flex flex-col gap-4">
-            <Button
-              text={`Continue as ${companyName || "your company"}`}
+            <button
               onClick={() => setStep("staff")}
-              style={{ backgroundColor: companyColor }}
-            />
+              className="rounded-sm border border-white/20 bg-black text-left flex items-center gap-3 px-4 py-3 cursor-pointer"
+            >
+              {companyLogoSlug ? (
+                <img
+                  src={`https://www.carlogos.org/car-logos/${companyLogoSlug}-logo.png`}
+                  alt={companyName || "Company"}
+                  className="w-10 h-10 rounded-full object-contain bg-white/5 shrink-0 p-1"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const parent = target.parentElement;
+                    if (parent) {
+                      target.remove();
+                      const fallback = document.createElement("div");
+                      fallback.className =
+                        "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[10px] font-semibold text-white text-center leading-tight px-1 truncate";
+                      fallback.style.backgroundColor = companyColor;
+                      fallback.textContent = (companyName || "?").split(
+                        " ",
+                      )[0];
+                      parent.insertBefore(fallback, parent.firstChild);
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[10px] font-semibold text-white text-center leading-tight px-1 truncate"
+                  style={{ backgroundColor: companyColor }}
+                >
+                  {(companyName || "?").split(" ")[0]}
+                </div>
+              )}
+              <span className="flex-1 truncate">
+                Continue as {companyName || "your company"}
+              </span>
+            </button>
             <button
               onClick={handleForgetCompany}
               className="text-white/40 hover:text-white/70 text-sm transition-colors w-fit mx-auto"

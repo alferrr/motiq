@@ -26,6 +26,17 @@ export async function POST(request: NextRequest) {
 
     const { Name: companyNameVal, ThemeColor } = companies[0];
 
+    // resolve brand-logo match: does the company name contain a known car brand?
+    const [brandRows]: any = await pool.query(
+      `SELECT LogoSlug FROM CarBrand
+       WHERE ? LIKE CONCAT('%', Name, '%')
+       ORDER BY LENGTH(Name) DESC
+       LIMIT 1`,
+      [companyNameVal],
+    );
+    const logoSlug: string | null =
+      brandRows.length > 0 ? brandRows[0].LogoSlug : null;
+
     // find user scoped to company
     const [rows]: any = await pool.query(
       `SELECT User_ID, FullName, Email, Password, Role, Company_ID
@@ -76,6 +87,7 @@ export async function POST(request: NextRequest) {
           companyId: user.Company_ID,
           companyName: companyNameVal,
           themeColor: ThemeColor,
+          logoSlug,
         },
       },
       { status: 200 },
