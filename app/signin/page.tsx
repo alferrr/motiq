@@ -282,7 +282,8 @@ export default function Page() {
           <div className="flex flex-col gap-4">
             <button
               onClick={() => setStep("staff")}
-              className="rounded-sm border border-white/20 bg-black text-left flex items-center gap-3 px-4 py-3 cursor-pointer"
+              style={{ "--hover-border": companyColor } as React.CSSProperties}
+              className="rounded-md border border-white/30 transition-all duration-100 ease-linear hover:border-(--hover-border) bg-black text-left flex items-center gap-3 px-4 py-3 cursor-pointer"
             >
               {companyLogoSlug ? (
                 <img
@@ -298,9 +299,7 @@ export default function Page() {
                       fallback.className =
                         "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[10px] font-semibold text-white text-center leading-tight px-1 truncate";
                       fallback.style.backgroundColor = companyColor;
-                      fallback.textContent = (companyName || "?").split(
-                        " ",
-                      )[0];
+                      fallback.textContent = (companyName || "?").split(" ")[0];
                       parent.insertBefore(fallback, parent.firstChild);
                     }
                   }}

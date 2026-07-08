@@ -44,3 +44,6 @@ FUNCTIONAL_REQUIREMENTS.md
 KASA_CONTEXT.md
 erd.md
 bpmn.txt
+CLAUDE.md
+AGENTS.md
+db/migrations/
