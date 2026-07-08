@@ -175,7 +175,7 @@ function JobForm({
   };
 
   return (
-    <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+    <div className="p-5 flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Vehicle</p>
         <SearchableSelect
@@ -246,7 +246,9 @@ function JobForm({
         />
       </div>
 
-      <div className="flex gap-3 pt-1">
+      <div
+        className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${dark ? "bg-[#111318]" : "bg-white"}`}
+      >
         <button
           onClick={onCancel}
           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
@@ -393,7 +395,7 @@ function StatusModal({
   }, 0);
 
   return (
-    <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+    <div className="p-5 flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>Status</p>
         <select
@@ -543,7 +545,9 @@ function StatusModal({
         </div>
       )}
 
-      <div className="flex gap-3 pt-1">
+      <div
+        className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${dark ? "bg-[#111318]" : "bg-white"}`}
+      >
         <button
           onClick={onClose}
           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-500 hover:text-gray-900"}`}
@@ -1174,7 +1178,9 @@ export default function JobOrdersPage() {
                 This will permanently delete the job order and all associated
                 service and parts records.
               </p>
-              <div className="flex gap-3">
+              <div
+                className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${card}`}
+              >
                 <button
                   onClick={() => setDeleteTarget(null)}
                   className={`flex-1 py-2.5 rounded-xl border text-sm font-medium ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-500 hover:text-gray-900"}`}

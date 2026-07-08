@@ -434,3 +434,4 @@ CHECKOUT_MAYA_NUMBER="09171234567"
 | Customers page (dashboard UI)                           | ❌ not built |
 | Invoices, Payment links, Webhooks, Analytics            | ❌ not built |
 | Settings page                                           | ❌ not built |
+

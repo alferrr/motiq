@@ -44,14 +44,14 @@ export default function Modal({
       }}
     >
       <div
-        className={`w-full ${size === "lg" ? "max-w-lg" : "max-w-md"} rounded-2xl border shadow-2xl transition-all duration-200 ${card}`}
+        className={`w-full ${size === "lg" ? "max-w-lg" : "max-w-md"} max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl transition-all duration-200 ${card}`}
         style={{
           transform: visible ? "scale(1)" : "scale(0.95)",
           opacity: visible ? 1 : 0,
         }}
       >
         <div
-          className={`flex items-center justify-between px-5 py-4 border-b ${border}`}
+          className={`shrink-0 flex items-center justify-between px-5 py-4 border-b ${border}`}
         >
           <p className={`text-sm font-semibold ${text}`}>{title}</p>
           <button
@@ -61,7 +61,9 @@ export default function Modal({
             <FaTimes size={14} />
           </button>
         </div>
-        {children}
+        <div className="flex-1 overflow-y-auto themed-scrollbar">
+          {children}
+        </div>
       </div>
     </div>
   );

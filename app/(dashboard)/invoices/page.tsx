@@ -211,7 +211,9 @@ function CreateInvoiceModal({
         </>
       )}
 
-      <div className="flex gap-3 pt-1">
+      <div
+        className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${dark ? "border-white/5" : "border-gray-100"} ${dark ? "bg-[#111318]" : "bg-white"}`}
+      >
         <button
           onClick={onCancel}
           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
@@ -367,7 +369,9 @@ function MarkPaidCashModal({
           autoFocus
         />
       </div>
-      <div className="flex gap-3 pt-1">
+      <div
+        className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${dark ? "border-white/5" : "border-gray-100"} ${dark ? "bg-[#111318]" : "bg-white"}`}
+      >
         <button
           onClick={onCancel}
           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors

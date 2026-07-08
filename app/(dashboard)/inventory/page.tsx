@@ -180,7 +180,9 @@ function PartForm({
         </p>
       </div>
 
-      <div className="flex gap-3 pt-1">
+      <div
+        className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${dark ? "bg-[#111318]" : "bg-white"}`}
+      >
         <button
           onClick={onCancel}
           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
@@ -291,7 +293,9 @@ function AdjustStockModal({
         </div>
       )}
 
-      <div className="flex gap-3 pt-1">
+      <div
+        className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${dark ? "bg-[#111318]" : "bg-white"}`}
+      >
         <button
           onClick={onClose}
           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-500 hover:text-gray-900"}`}
@@ -891,7 +895,9 @@ export default function InventoryPage() {
                 Delete <span className={text}>{deleteTarget.PartName}</span>?
                 This won't affect existing job orders that used this part.
               </p>
-              <div className="flex gap-3">
+              <div
+                className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${card}`}
+              >
                 <button
                   onClick={() => setDeleteTarget(null)}
                   className={`flex-1 py-2.5 rounded-xl border text-sm font-medium ${dark ? "border-white/10 text-gray-400 hover:text-white" : "border-gray-200 text-gray-500 hover:text-gray-900"}`}

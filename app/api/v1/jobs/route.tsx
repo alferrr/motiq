@@ -107,18 +107,8 @@ export async function POST(request: NextRequest) {
 
     const body = JobSchema.parse(await request.json());
 
-    const [result]: any = await pool.query(
-      `INSERT INTO RepairJob (Vehicle_ID, Mechanic_ID, Appointment_ID, JobDate, ReportedIssue, Status)
-       VALUES (?, ?, ?, ?, ?, 'Pending')`,
-      [
-        body.vehicleId,
-        body.mechanicId,
-        body.appointmentId ?? null,
-        body.jobDate,
-        body.reportedIssue ?? null,
-      ],
-    );
-
+    // verify the vehicle belongs to this company — also doubles as the
+    // data fetch for the job-order-created email below
     const [[recipient]]: any = await pool.query(
       `SELECT c.FullName AS customerName, c.Email AS customerEmail,
               v.Make, v.Model,
@@ -131,7 +121,46 @@ export async function POST(request: NextRequest) {
        LIMIT 1`,
       [body.vehicleId, companyId],
     );
-    if (recipient?.customerEmail) {
+    if (!recipient)
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+
+    // verify the mechanic belongs to this company
+    const [[mechanic]]: any = await pool.query(
+      `SELECT m.Mechanic_ID FROM Mechanic m
+       JOIN User u ON u.User_ID = m.User_ID
+       WHERE m.Mechanic_ID = ? AND u.Company_ID = ?
+       LIMIT 1`,
+      [body.mechanicId, companyId],
+    );
+    if (!mechanic)
+      return NextResponse.json({ error: "Mechanic not found" }, { status: 404 });
+
+    // if linked to an appointment, verify it belongs to this company too
+    if (body.appointmentId !== undefined) {
+      const [[appointment]]: any = await pool.query(
+        `SELECT Appointment_ID FROM Appointment WHERE Appointment_ID = ? AND Company_ID = ? LIMIT 1`,
+        [body.appointmentId, companyId],
+      );
+      if (!appointment)
+        return NextResponse.json(
+          { error: "Appointment not found" },
+          { status: 404 },
+        );
+    }
+
+    const [result]: any = await pool.query(
+      `INSERT INTO RepairJob (Vehicle_ID, Mechanic_ID, Appointment_ID, JobDate, ReportedIssue, Status)
+       VALUES (?, ?, ?, ?, ?, 'Pending')`,
+      [
+        body.vehicleId,
+        body.mechanicId,
+        body.appointmentId ?? null,
+        body.jobDate,
+        body.reportedIssue ?? null,
+      ],
+    );
+
+    if (recipient.customerEmail) {
       const { subject, html } = jobOrderCreatedEmail({
         companyName: recipient.companyName,
         themeColor: recipient.ThemeColor,

@@ -84,6 +84,27 @@ export async function POST(request: NextRequest) {
 
     const body = AppointmentSchema.parse(await request.json());
 
+    // verify the vehicle belongs to the given customer, and that customer
+    // belongs to this company — also doubles as the data fetch for the
+    // confirmation email below, so it's not queried twice
+    const [[recipient]]: any = await pool.query(
+      `SELECT c.FullName AS customerName, c.Email AS customerEmail,
+              v.Make, v.Model,
+              co.Name AS companyName, co.ThemeColor,
+              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
+       FROM Customer c
+       JOIN Vehicle v ON v.Vehicle_ID = ? AND v.Customer_ID = c.Customer_ID
+       JOIN Company co ON co.Company_ID = c.Company_ID
+       WHERE c.Customer_ID = ? AND c.Company_ID = ?
+       LIMIT 1`,
+      [body.vehicleId, body.customerId, companyId],
+    );
+    if (!recipient)
+      return NextResponse.json(
+        { error: "Customer or vehicle not found" },
+        { status: 404 },
+      );
+
     // conflict check — same vehicle, same date+time
     const [[conflict]]: any = await pool.query(
       `SELECT Appointment_ID FROM Appointment
@@ -110,19 +131,7 @@ export async function POST(request: NextRequest) {
       ],
     );
 
-    const [[recipient]]: any = await pool.query(
-      `SELECT c.FullName AS customerName, c.Email AS customerEmail,
-              v.Make, v.Model,
-              co.Name AS companyName, co.ThemeColor,
-              co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
-       FROM Customer c
-       JOIN Vehicle v ON v.Vehicle_ID = ?
-       JOIN Company co ON co.Company_ID = c.Company_ID
-       WHERE c.Customer_ID = ? AND c.Company_ID = ?
-       LIMIT 1`,
-      [body.vehicleId, body.customerId, companyId],
-    );
-    if (recipient?.customerEmail) {
+    if (recipient.customerEmail) {
       const { subject, html } = appointmentConfirmationEmail({
         companyName: recipient.companyName,
         themeColor: recipient.ThemeColor,

@@ -46,6 +46,21 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+.themed-scrollbar {
+  scrollbar-color: var(--color-primary, #2563eb) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-primary, #2563eb);
+    border-radius: 9999px;
+  }
+}
+
 .stat-container {
   display: flex;
   flex-direction: column;
