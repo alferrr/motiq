@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import Drawer from "@/components/shared/Drawer";
@@ -316,7 +316,7 @@ function ServiceDrawerContent({
   );
 }
 
-export default function ServicesPage() {
+function ServicesPageInner() {
   const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
   const canAdd = userRole !== "Mechanic";
@@ -760,5 +760,13 @@ export default function ServicesPage() {
         )}
       </Drawer>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={null}>
+      <ServicesPageInner />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import Drawer from "@/components/shared/Drawer";
@@ -430,7 +430,7 @@ function VehicleDrawerContent({
   );
 }
 
-export default function VehiclesPage() {
+function VehiclesPageInner() {
   const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
   const canAdd = userRole !== "Mechanic";
@@ -902,5 +902,13 @@ export default function VehiclesPage() {
         )}
       </Drawer>
     </div>
+  );
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={null}>
+      <VehiclesPageInner />
+    </Suspense>
   );
 }

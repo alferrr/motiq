@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import Drawer from "@/components/shared/Drawer";
@@ -395,7 +395,7 @@ function UserDrawerContent({
   );
 }
 
-export default function UsersPage() {
+function UsersPageInner() {
   const { dark, toggleTheme, primaryColor } = useTheme();
   const { setOpen } = useSidebar();
 
@@ -855,5 +855,13 @@ export default function UsersPage() {
         )}
       </Drawer>
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={null}>
+      <UsersPageInner />
+    </Suspense>
   );
 }

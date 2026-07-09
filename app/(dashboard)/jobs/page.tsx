@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useSearchParams } from "next/navigation";
@@ -809,7 +809,7 @@ function JobDrawerContent({
   );
 }
 
-export default function JobOrdersPage() {
+function JobOrdersPageInner() {
   const { dark, toggleTheme, primaryColor, userRole } = useTheme();
   const { setOpen } = useSidebar();
   const canAdd = userRole !== "Mechanic";
@@ -1237,5 +1237,13 @@ export default function JobOrdersPage() {
         )}
       </Drawer>
     </div>
+  );
+}
+
+export default function JobOrdersPage() {
+  return (
+    <Suspense fallback={null}>
+      <JobOrdersPageInner />
+    </Suspense>
   );
 }
