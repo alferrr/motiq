@@ -30,7 +30,7 @@ export default function Header() {
         MOTIQ
       </h1>
 
-      <nav className="hidden md:flex w-1/3 justify-center gap-6 lg:gap-12 xl:gap-20 text-sm">
+      <nav className="hidden md:flex w-1/3 justify-center gap-6 lg:gap-12 xl:gap-20 text-sm opacity-0">
         <Link href="/about">About</Link>
         <Link href="/services">Services</Link>
         <Link href="/pricing">Pricing</Link>
