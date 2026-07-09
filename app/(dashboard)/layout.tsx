@@ -1,12 +1,11 @@
 "use client";
 
 import Sidebar from "@/components/shared/Sidebar";
-import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
+import { SidebarProvider } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Suspense } from "react";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
-  const { open, setOpen } = useSidebar();
   const { dark } = useTheme();
 
   const rootBg = dark ? "bg-[#111318]" : "bg-white";
@@ -14,7 +13,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div suppressHydrationWarning className={`h-screen overflow-hidden ${rootBg}`}>
-      <Sidebar open={open} onClose={() => setOpen(false)} />
+      <Sidebar />
       <div
         suppressHydrationWarning
         className={`lg:ml-56 h-screen flex flex-col ${innerBg} lg:rounded-l-3xl overflow-hidden`}

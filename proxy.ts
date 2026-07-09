@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
   "/api/v1/auth/reset-password",
   "/api/v1/payment-callback",
   "/pay-status",
+  "/api/health",
 ];
 
 const ROLE_PATHS: Record<string, string[]> = {
