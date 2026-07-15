@@ -40,8 +40,13 @@ export default function Page() {
   >({});
   const [serverError, setServerError] = useState("");
 
-  const { setPrimaryColor, setCompanyName, setUserName, setUserRole } =
-    useTheme();
+  const {
+    setPrimaryColor,
+    setCompanyName,
+    setUserName,
+    setUserRole,
+    setIsOwner,
+  } = useTheme();
   const router = useRouter();
 
   // remember the last company signed into on this device, if any
@@ -144,6 +149,7 @@ export default function Page() {
       if (res.data.user?.companyName) setCompanyName(res.data.user.companyName);
       if (res.data.user?.fullName) setUserName(res.data.user.fullName);
       if (res.data.user?.role) setUserRole(res.data.user.role);
+      setIsOwner(!!res.data.user?.isOwner);
       setCompanyLogoSlug(res.data.user?.logoSlug ?? null);
 
       try {

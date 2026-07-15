@@ -3,9 +3,10 @@
 -- =============================================================================
 -- Consolidated, deployable schema for a fresh install. Represents the current
 -- state of the database, including everything applied incrementally via
--- db/migrations/002_kasa_payments.sql, 003_customer_email.sql, and
--- 004_car_brands.sql. Use this file to stand up a new database from scratch;
--- db/migrations/ remains as historical record of how the schema evolved.
+-- db/migrations/002_kasa_payments.sql, 003_customer_email.sql,
+-- 004_car_brands.sql, and 005_site_content.sql. Use this file to stand up a
+-- new database from scratch; db/migrations/ remains as historical record of
+-- how the schema evolved.
 --
 -- Usage:
 --   mariadb -u <user> -p < schema.sql
@@ -13,7 +14,8 @@
 -- Multi-tenancy: Company is the tenant root. User, Customer, ServiceCatalog,
 -- PartsInventory, and Appointment carry Company_ID directly; Vehicle,
 -- RepairJob, Invoice, Payment, JobService, and JobParts are scoped
--- transitively through their parent row.
+-- transitively through their parent row. CarBrand and SiteContent are global
+-- reference/content tables, not tenant-scoped.
 -- =============================================================================
 
 -- Uncomment and adjust to create/select a database before running the rest
@@ -57,6 +59,17 @@ CREATE TABLE CarBrand (
   Name         VARCHAR(50)   NOT NULL,
   LogoSlug    VARCHAR(50)   NOT NULL,
   UNIQUE KEY uq_car_brand_name (Name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- -----------------------------------------------------------------------------
+-- SiteContent — global (not Company_ID-scoped) key/value content store
+-- backing the owner-only landing-page CMS. See db/migrations/005_site_content.sql.
+-- -----------------------------------------------------------------------------
+CREATE TABLE SiteContent (
+  ContentKey   VARCHAR(64)  NOT NULL PRIMARY KEY,
+  ContentValue JSON         NOT NULL,
+  UpdatedAt    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UpdatedBy    VARCHAR(150) NULL COMMENT 'Email of the owner who last saved this block'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- -----------------------------------------------------------------------------
@@ -317,3 +330,55 @@ INSERT INTO CarBrand (Name, LogoSlug) VALUES
   ('BYD', 'byd'),
   ('MG', 'mg'),
   ('Foton', 'foton');
+
+-- =============================================================================
+-- Seed data — initial landing-page copy for the CMS (see
+-- db/migrations/005_site_content.sql), one-to-one with the hardcoded copy
+-- that previously lived in components/pages/Hero.tsx and
+-- components/shared/Footer.jsx.
+-- =============================================================================
+INSERT INTO SiteContent (ContentKey, ContentValue) VALUES
+  ('landing.hero', JSON_OBJECT(
+    'headline', 'Everything your garage needs.\nOne platform.',
+    'subhead', 'The all-in-one management platform designed for independent garages\nand growing auto repair businesses.',
+    'ctaPrimaryLabel', 'Get Started Free',
+    'ctaSecondaryLabel', 'Sign In'
+  )),
+  ('landing.platform', JSON_OBJECT(
+    'eyebrow', 'THE PLATFORM',
+    'heading', 'Built for modern garages',
+    'paragraph', 'Motiq replaces paperwork with an intuitive digital workspace that keeps your operations connected and your business running efficiently.',
+    'features', JSON_ARRAY(
+      JSON_OBJECT('title', 'Customer & Vehicle Record Managment', 'desc', 'Store and organize customer information, vehicle details, service history, and repair reords for quick and accurate retrieval', 'image', '/profile.png', 'span', 'wide'),
+      JSON_OBJECT('title', 'Repair Job Tracking', 'desc', 'Monitor ongoing repairs, assign tasks, track job status, and maintain detailed service documentation.', 'image', '/orders.png', 'span', 'narrow'),
+      JSON_OBJECT('title', 'Reports & Analytics', 'desc', 'Access service reports, revenue summaries, repair histories, and performance metrics to support informed decision-making.', 'image', '/reports.png', 'span', 'wide'),
+      JSON_OBJECT('title', 'Automated Billing & Invoicing', 'desc', 'Generate accurate invoices automatically based on labor costs and parts used, reducing calculation errors and improving transparency.', 'image', '/invoice.png', 'span', 'narrow')
+    )
+  )),
+  ('landing.meet', JSON_OBJECT(
+    'eyebrow', 'MEET MOTIQ',
+    'heading', 'One Platform That Connects\nYour Entire Garage',
+    'paragraph', 'Manage customers, mechanics, repair jobs, inventory, and billing through one centralized dashboard designed specifically for auto-repair businesses.',
+    'stats', JSON_ARRAY(
+      JSON_OBJECT('value', 100, 'suffix', '+', 'label', 'Garages Ready for Digital Management'),
+      JSON_OBJECT('value', 1, 'suffix', 'K+', 'label', 'Customer & Vehicle Records Managed'),
+      JSON_OBJECT('value', 5, 'suffix', 'x', 'label', 'Faster Repair History Retrieval'),
+      JSON_OBJECT('value', 100, 'suffix', '%', 'label', 'Accurate Automated Billing')
+    )
+  )),
+  ('landing.howItWorks', JSON_OBJECT(
+    'eyebrow', 'HOW IT WORKS',
+    'heading', 'Manage Your Garage in\nThree Simple Steps',
+    'paragraph', 'MOTIQ streamlines every stage of your workflow—from customer registration to repair completion and billing.',
+    'steps', JSON_ARRAY(
+      JSON_OBJECT('title', 'Register Customer & Vehicle', 'desc', 'Record customer information, vehicle details, and reported issues into the system.', 'image', '/vehicle.png'),
+      JSON_OBJECT('title', 'Manage Repair Process', 'desc', 'Assign repair jobs, update service progress, and maintain detailed repair records.', 'image', '/jobstatus.png'),
+      JSON_OBJECT('title', 'Generate Billing & Reports', 'desc', 'Automatically compute labor and parts costs, print invoices, and maintain accurate financial records.', 'image', '/invoice.png')
+    )
+  )),
+  ('landing.footer', JSON_OBJECT(
+    'headline', 'Smarter Garage Management Starts Here.',
+    'paragraph', 'Bring customer records, repair tracking, and billing together in one integrated garage management system built to streamline daily operations, reduce manual work, and deliver faster, more efficient service.',
+    'ctaPrimaryLabel', 'Get Started Free',
+    'ctaSecondaryLabel', 'Sign In'
+  ));

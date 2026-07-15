@@ -13,6 +13,8 @@ type ThemeContextType = {
   setUserName: (name: string) => void;
   userRole: string;
   setUserRole: (role: string) => void;
+  isOwner: boolean;
+  setIsOwner: (isOwner: boolean) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -26,6 +28,8 @@ const ThemeContext = createContext<ThemeContextType>({
   setUserName: () => {},
   userRole: "",
   setUserRole: () => {},
+  isOwner: false,
+  setIsOwner: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -34,6 +38,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [companyName, setCompanyNameState] = useState("");
   const [userName, setUserNameState] = useState("");
   const [userRole, setUserRoleState] = useState("");
+  const [isOwner, setIsOwnerState] = useState(false);
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("motiq-theme");
@@ -55,6 +60,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedUser) setUserNameState(storedUser);
     const storedRole = localStorage.getItem("motiq-user-role");
     if (storedRole) setUserRoleState(storedRole);
+    const storedIsOwner = localStorage.getItem("motiq-is-owner");
+    if (storedIsOwner) setIsOwnerState(storedIsOwner === "true");
   }, []);
 
   const toggleTheme = () => {
@@ -92,6 +99,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("motiq-user-role", role);
   };
 
+  const setIsOwner = (owner: boolean) => {
+    setIsOwnerState(owner);
+    localStorage.setItem("motiq-is-owner", String(owner));
+  };
+
   return (
     <ThemeContext.Provider
       value={{
@@ -105,6 +117,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setUserName,
         userRole,
         setUserRole,
+        isOwner,
+        setIsOwner,
       }}
     >
       {children}

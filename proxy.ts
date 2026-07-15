@@ -4,11 +4,13 @@ import { getSession } from "@/lib/session";
 const PUBLIC_PATHS = [
   "/",
   "/signin",
+  "/owner",
   "/register",
   "/register/success",
   "/forgot",
   "/reset-password",
   "/api/v1/auth/login",
+  "/api/v1/auth/owner-login",
   "/api/v1/auth/register",
   "/api/v1/auth/verify-company",
   "/api/v1/auth/logout",
@@ -18,6 +20,10 @@ const PUBLIC_PATHS = [
   "/pay-status",
   "/api/health",
 ];
+
+// paths gated by a specific account (session email), not by role — used for
+// the owner-only landing-page CMS, which isn't a tenant-scoped concern
+const OWNER_PATHS = ["/content", "/api/v1/content"];
 
 const ROLE_PATHS: Record<string, string[]> = {
   // Admin only
@@ -62,6 +68,16 @@ export async function proxy(request: NextRequest) {
   // role-based path guard
   for (const [path, roles] of Object.entries(ROLE_PATHS)) {
     if (pathname.startsWith(path) && !roles.includes(payload.role)) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  // owner-only path guard (email-based, not role-based)
+  if (OWNER_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    if (payload.email !== process.env.OWNER_EMAIL) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }

@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
           companyName: companyNameVal,
           themeColor: ThemeColor,
           logoSlug,
+          isOwner: user.Email === process.env.OWNER_EMAIL,
         },
       },
       { status: 200 },

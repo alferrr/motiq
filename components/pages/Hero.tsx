@@ -1,8 +1,8 @@
 "use client";
+import { Fragment } from "react";
 import Header from "@/components/ui/Header";
-import Button from "../ui/Button";
-import LogoLoop from "../LogoLoop";
 import Footer from "@/components/shared/Footer";
+import LogoLoop from "../LogoLoop";
 
 import {
   SiToyota,
@@ -25,14 +25,16 @@ import {
   SiLamborghini,
   SiMitsubishi,
 } from "react-icons/si";
-import SpotlightCard from "../SpotlightCard";
 import GlassCard from "../ui/GlassCard";
 import CountUp from "../CountUp";
 
 import Image from "next/image";
 import Link from "next/link";
+import type { SiteContent } from "@/lib/content";
 
-export const carBrands = [
+// Car-brand logos are React icon components, not plain data, so they're
+// excluded from the CMS and stay hardcoded — see lib/content.ts.
+const carBrands = [
   { node: <SiToyota />, title: "Toyota" },
   { node: <SiHonda />, title: "Honda" },
   { node: <SiFord />, title: "Ford" },
@@ -54,53 +56,20 @@ export const carBrands = [
   { node: <SiMitsubishi />, title: "Mitsubishi" },
 ];
 
-export const steps = [
-  {
-    step: 1,
-    title: "Register Customer & Vehicle",
-    desc: "Record customer information, vehicle details, and reported issues into the system.",
-    image: "/vehicle.png",
-  },
-  {
-    step: 2,
-    title: "Manage Repair Process",
-    desc: "Assign repair jobs, update service progress, and maintain detailed repair records.",
-    image: "/jobstatus.png",
-  },
-  {
-    step: 3,
-    title: "Generate Billing & Reports",
-    desc: "Automatically compute labor and parts costs, print invoices, and maintain accurate financial records.",
-    image: "/invoice.png",
-  },
-];
-
-const platformFeatures = [
-  {
-    title: "Customer & Vehicle Record Managment",
-    desc: "Store and organize customer information, vehicle details, service history, and repair reords for quick and accurate retrieval",
-    image: "/profile.png",
-    span: "wide",
-  },
-  {
-    title: "Repair Job Tracking",
-    desc: "Monitor ongoing repairs, assign tasks, track job status, and maintain detailed service documentation.",
-    image: "/orders.png",
-    span: "narrow",
-  },
-  {
-    title: "Reports & Analytics",
-    desc: "Access service reports, revenue summaries, repair histories, and performance metrics to support informed decision-making.",
-    image: "/reports.png",
-    span: "wide",
-  },
-  {
-    title: "Automated Billing & Invoicing",
-    desc: "Generate accurate invoices automatically based on labor costs and parts used, reducing calculation errors and improving transparency.",
-    image: "/invoice.png",
-    span: "narrow",
-  },
-];
+// renders a string with `\n`-delimited line breaks (the CMS's multi-line
+// copy convention — see lib/content.ts)
+function MultilineText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((line, i, arr) => (
+        <Fragment key={i}>
+          {line}
+          {i < arr.length - 1 && <br />}
+        </Fragment>
+      ))}
+    </>
+  );
+}
 
 function FeatureCard({
   title,
@@ -132,7 +101,9 @@ function FeatureCard({
   );
 }
 
-const Hero = () => {
+const Hero = ({ content }: { content: SiteContent }) => {
+  const { hero, platform, meet, howItWorks } = content;
+
   return (
     <>
       <Header />
@@ -149,25 +120,23 @@ const Hero = () => {
         <div className="flex flex-col items-center justify-center pt-32 pb-16 sm:py-40 sm:pb-30 gap-5">
           {" "}
           <h1 className="text-3xl sm:text-4xl md:text-5xl text-center font-heading leading-normal z-5">
-            Everything your garage needs. <br /> One platform.
+            <MultilineText text={hero.headline} />
           </h1>
           <p className="text-center text-sm sm:text-base font-sans font-light z-5 leading-normal max-w-md sm:max-w-none">
-            The all-in-one management platform designed for independent garages
-            <br className="hidden sm:block" />
-            and growing auto repair businesses.
+            <MultilineText text={hero.subhead} />
           </p>
           <nav className="flex flex-col sm:flex-row gap-3 items-center z-5 w-full sm:w-auto px-6 sm:px-0">
             <Link
               href="/register"
               className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-[#0e61d5] font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
             >
-              Get Started Free
+              {hero.ctaPrimaryLabel}
             </Link>
             <Link
               href="/sigin"
               className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-white text-black font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
             >
-              Sign In
+              {hero.ctaSecondaryLabel}
             </Link>
           </nav>
         </div>
@@ -202,34 +171,33 @@ const Hero = () => {
         }}
       >
         <h2 className="gradient-title text-white text-xl font-heading">
-          THE PLATFORM
+          {platform.eyebrow}
         </h2>
         <h1 className="text-3xl sm:text-4xl md:text-5xl text-center font-heading leading-normal z-5 mt-10 sm:mt-20">
-          Built for modern garages
+          <MultilineText text={platform.heading} />
         </h1>
         <p className="w-full max-w-150 text-center text-sm sm:text-base font-light">
-          Motiq replaces paperwork with an intuitive digital workspace that
-          keeps your operations connected and your business running efficiently.
+          {platform.paragraph}
         </p>
 
         <div className="flex flex-col gap-6 w-full max-w-6xl">
           <div className="flex flex-col md:flex-row w-full mt-10 sm:mt-20 gap-6 justify-center">
             <FeatureCard
-              {...platformFeatures[0]}
+              {...platform.features[0]}
               className="w-full md:w-[60%]"
             />
             <FeatureCard
-              {...platformFeatures[1]}
+              {...platform.features[1]}
               className="w-full md:w-[40%]"
             />
           </div>
           <div className="flex flex-col md:flex-row-reverse w-full gap-6 justify-center">
             <FeatureCard
-              {...platformFeatures[2]}
+              {...platform.features[2]}
               className="w-full md:w-[60%]"
             />
             <FeatureCard
-              {...platformFeatures[3]}
+              {...platform.features[3]}
               className="w-full md:w-[40%]"
             />
           </div>
@@ -246,16 +214,13 @@ const Hero = () => {
         }}
       >
         <h2 className="gradient-title text-white text-xl font-heading">
-          MEET MOTIQ
+          {meet.eyebrow}
         </h2>
         <h1 className="text-3xl sm:text-4xl md:text-5xl text-center font-heading leading-normal z-5 mt-10 sm:mt-20">
-          One Platform That Connects <br className="hidden sm:block" />
-          Your Entire Garage{" "}
+          <MultilineText text={meet.heading} />
         </h1>
         <p className="w-full max-w-150 text-center text-sm sm:text-base font-light">
-          Manage customers, mechanics, repair jobs, inventory, and billing
-          through one centralized dashboard designed specifically for
-          auto-repair businesses.
+          {meet.paragraph}
         </p>
         <Image
           src="/hero.png"
@@ -266,74 +231,23 @@ const Hero = () => {
         />
 
         <div className="flex flex-wrap gap-8 items-center justify-center sm:justify-between w-full">
-          <div className="stat-container">
-            <div className="number">
-              {" "}
-              <CountUp
-                from={0}
-                to={100}
-                separator=","
-                direction="up"
-                duration={0.5}
-                className=""
-                delay={0}
-              />
-              +
+          {meet.stats.map((stat, i) => (
+            <div className="stat-container" key={i}>
+              <div className="number">
+                <CountUp
+                  from={0}
+                  to={stat.value}
+                  separator=","
+                  direction="up"
+                  duration={0.5}
+                  className=""
+                  delay={0}
+                />
+                {stat.suffix}
+              </div>
+              <p>{stat.label}</p>
             </div>
-
-            <p>Garages Ready for Digital Management</p>
-          </div>
-          <div className="stat-container">
-            <div className="number">
-              {" "}
-              <CountUp
-                from={0}
-                to={1}
-                separator=","
-                direction="up"
-                duration={0.5}
-                className=""
-                delay={0}
-              />
-              K+
-            </div>
-
-            <p>Customer & Vehicle Records Managed</p>
-          </div>
-          <div className="stat-container">
-            <div className="text-4xl sm:text-5xl flex items-center">
-              {" "}
-              <CountUp
-                from={0}
-                to={5}
-                separator=","
-                direction="up"
-                duration={0.5}
-                className=""
-                delay={0}
-              />
-              x
-            </div>
-
-            <p className="mt-5">Faster Repair History Retrieval</p>
-          </div>
-          <div className="stat-container">
-            <div className="number">
-              {" "}
-              <CountUp
-                from={0}
-                to={100}
-                separator=","
-                direction="up"
-                duration={0.5}
-                className=""
-                delay={0}
-              />
-              %
-            </div>
-
-            <p>Accurate Automated Billing</p>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -346,22 +260,19 @@ const Hero = () => {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <h2 className="gradient-title">HOW IT WORKS</h2>
+        <h2 className="gradient-title">{howItWorks.eyebrow}</h2>
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl text-center font-heading leading-normal z-5 mt-10 sm:mt-20">
-          Manage Your Garage in
-          <br />
-          Three Simple Steps
+          <MultilineText text={howItWorks.heading} />
         </h1>
         <p className="w-full max-w-150 text-center text-sm sm:text-base font-light">
-          MOTIQ streamlines every stage of your workflow—from customer
-          registration to repair completion and billing.
+          {howItWorks.paragraph}
         </p>
         <div className="flex flex-col md:flex-row justify-between w-full max-w-6xl mt-10 sm:mt-20 gap-6">
-          {steps.map((step) => {
+          {howItWorks.steps.map((step, i) => {
             return (
               <GlassCard
-                key={step.step}
+                key={i}
                 className="w-full md:w-100 min-h-100 p-[14px]"
                 contentClassName=""
               >
@@ -384,7 +295,7 @@ const Hero = () => {
         </div>
       </div>
 
-      <Footer />
+      <Footer content={content.footer} />
     </>
   );
 };

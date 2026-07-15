@@ -112,7 +112,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { open, setOpen } = useSidebar();
   const router = useRouter();
-  const { dark, primaryColor, companyName, userName, userRole } = useTheme();
+  const { dark, primaryColor, companyName, userName, userRole, isOwner } =
+    useTheme();
 
   const bg = dark ? "bg-[#111318]" : "bg-white";
   const border = dark ? "border-white/5" : "border-gray-100";
@@ -165,10 +166,16 @@ export default function Sidebar() {
   const visibleMain = userRole
     ? NAV_MAIN.filter((item) => ROLE_NAV[userRole]?.includes(item.href))
     : null;
+  // "Site Content" is gated by account (session email), not role, so it's
+  // appended here rather than living in ROLE_NAV_BOTTOM — see proxy.ts's
+  // OWNER_PATHS for the matching server-side guard.
   const visibleBottom = userRole
-    ? NAV_BOTTOM.filter((item) =>
-        ROLE_NAV_BOTTOM[userRole]?.includes(item.href),
-      )
+    ? [
+        ...NAV_BOTTOM.filter((item) =>
+          ROLE_NAV_BOTTOM[userRole]?.includes(item.href),
+        ),
+        ...(isOwner ? [{ label: "Site Content", href: "/content" }] : []),
+      ]
     : null;
 
   // avatar initials from user name
