@@ -4,7 +4,8 @@
 -- Consolidated, deployable schema for a fresh install. Represents the current
 -- state of the database, including everything applied incrementally via
 -- db/migrations/002_kasa_payments.sql, 003_customer_email.sql,
--- 004_car_brands.sql, and 005_site_content.sql. Use this file to stand up a
+-- 004_car_brands.sql, 005_site_content.sql, and 006_site_content_cta_links.sql.
+-- Use this file to stand up a
 -- new database from scratch; db/migrations/ remains as historical record of
 -- how the schema evolved.
 --
@@ -342,7 +343,9 @@ INSERT INTO SiteContent (ContentKey, ContentValue) VALUES
     'headline', 'Everything your garage needs.\nOne platform.',
     'subhead', 'The all-in-one management platform designed for independent garages\nand growing auto repair businesses.',
     'ctaPrimaryLabel', 'Get Started Free',
-    'ctaSecondaryLabel', 'Sign In'
+    'ctaPrimaryHref', '/register',
+    'ctaSecondaryLabel', 'Sign In',
+    'ctaSecondaryHref', '/signin'
   )),
   ('landing.platform', JSON_OBJECT(
     'eyebrow', 'THE PLATFORM',
@@ -380,5 +383,7 @@ INSERT INTO SiteContent (ContentKey, ContentValue) VALUES
     'headline', 'Smarter Garage Management Starts Here.',
     'paragraph', 'Bring customer records, repair tracking, and billing together in one integrated garage management system built to streamline daily operations, reduce manual work, and deliver faster, more efficient service.',
     'ctaPrimaryLabel', 'Get Started Free',
-    'ctaSecondaryLabel', 'Sign In'
+    'ctaPrimaryHref', '/register',
+    'ctaSecondaryLabel', 'Sign In',
+    'ctaSecondaryHref', '/signin'
   ));

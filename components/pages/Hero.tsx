@@ -30,7 +30,7 @@ import CountUp from "../CountUp";
 
 import Image from "next/image";
 import Link from "next/link";
-import type { SiteContent } from "@/lib/content";
+import { resolveHref, type SiteContent } from "@/lib/content";
 
 // Car-brand logos are React icon components, not plain data, so they're
 // excluded from the CMS and stay hardcoded — see lib/content.ts.
@@ -109,7 +109,8 @@ const Hero = ({ content }: { content: SiteContent }) => {
       <Header />
 
       <div
-        className="hero flex flex-col justify-center items-center gap-6 relative text-white px-4"
+        id="hero"
+        className="hero flex flex-col justify-center items-center gap-6 relative text-white px-4 scroll-mt-24"
         style={{
           backgroundImage: "url('/bg.jpg')",
           backgroundSize: "cover",
@@ -127,14 +128,14 @@ const Hero = ({ content }: { content: SiteContent }) => {
           </p>
           <nav className="flex flex-col sm:flex-row gap-3 items-center z-5 w-full sm:w-auto px-6 sm:px-0">
             <Link
-              href="/register"
+              href={resolveHref(hero.ctaPrimaryHref)}
               className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-[#0e61d5] font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
             >
               {hero.ctaPrimaryLabel}
             </Link>
             <Link
-              href="/sigin"
-              className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-white text-black font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
+              href={resolveHref(hero.ctaSecondaryHref)}
+              className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-white text-black font-light text-sm transition-colors hover:bg-white/90"
             >
               {hero.ctaSecondaryLabel}
             </Link>
@@ -162,7 +163,8 @@ const Hero = ({ content }: { content: SiteContent }) => {
       </div>
 
       <div
-        className="flex flex-col gap-4 items-center justify-center p-6 py-16 sm:p-20 bg-black text-white"
+        id="platform"
+        className="flex flex-col gap-4 items-center justify-center p-6 py-16 sm:p-20 bg-black text-white scroll-mt-24"
         style={{
           backgroundImage: "url('/bflare.png')",
           backgroundSize: "cover",
@@ -205,7 +207,8 @@ const Hero = ({ content }: { content: SiteContent }) => {
       </div>
 
       <div
-        className="flex flex-col gap-4 items-center justify-center p-6 py-16 sm:p-20 bg-black text-white"
+        id="meet"
+        className="flex flex-col gap-4 items-center justify-center p-6 py-16 sm:p-20 bg-black text-white scroll-mt-24"
         style={{
           backgroundImage: "url('/meet.png')",
           backgroundSize: "cover",
@@ -252,7 +255,8 @@ const Hero = ({ content }: { content: SiteContent }) => {
       </div>
 
       <div
-        className="flex flex-col gap-4 items-center justify-center p-6 py-16 sm:p-20 bg-black text-white"
+        id="how-it-works"
+        className="flex flex-col gap-4 items-center justify-center p-6 py-16 sm:p-20 bg-black text-white scroll-mt-24"
         style={{
           backgroundImage: "url('/bg2.png')",
           backgroundSize: "cover",

@@ -14,6 +14,12 @@ body {
   font-family: var(--font-inter);
 }
 
+/* smooths in-page anchor jumps used by CMS-configured CTA links that target
+   a section id (see lib/content.ts's resolveHref) */
+html {
+  scroll-behavior: smooth;
+}
+
 .hero {
   &::after {
     position: absolute;

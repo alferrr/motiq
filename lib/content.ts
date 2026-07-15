@@ -7,7 +7,9 @@ export interface HeroContent {
   headline: string;
   subhead: string;
   ctaPrimaryLabel: string;
+  ctaPrimaryHref: string;
   ctaSecondaryLabel: string;
+  ctaSecondaryHref: string;
 }
 
 export interface PlatformFeature {
@@ -54,7 +56,38 @@ export interface FooterContent {
   headline: string;
   paragraph: string;
   ctaPrimaryLabel: string;
+  ctaPrimaryHref: string;
   ctaSecondaryLabel: string;
+  ctaSecondaryHref: string;
+}
+
+// Ids the owner can target from a CTA "Link" field to scroll to a section on
+// the same page instead of navigating away — kept in sync with the `id`
+// attributes placed on Hero.tsx's/Footer.jsx's section wrappers.
+export const SECTION_IDS = [
+  "hero",
+  "platform",
+  "meet",
+  "how-it-works",
+  "footer",
+] as const;
+
+// Resolves a CTA "Link" field into a usable href:
+//  - a path ("/register") or absolute URL ("https://...", "mailto:...") is
+//    used as-is
+//  - a bare word ("platform") or an explicit "#platform" becomes an in-page
+//    anchor, scrolling to the section with that id
+export function resolveHref(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "#";
+  if (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("/") ||
+    /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
+  ) {
+    return trimmed;
+  }
+  return `#${trimmed}`;
 }
 
 export interface SiteContent {
@@ -91,7 +124,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     subhead:
       "The all-in-one management platform designed for independent garages\nand growing auto repair businesses.",
     ctaPrimaryLabel: "Get Started Free",
+    ctaPrimaryHref: "/register",
     ctaSecondaryLabel: "Sign In",
+    ctaSecondaryHref: "/signin",
   },
   platform: {
     eyebrow: "THE PLATFORM",
@@ -165,7 +200,9 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     paragraph:
       "Bring customer records, repair tracking, and billing together in one integrated garage management system built to streamline daily operations, reduce manual work, and deliver faster, more efficient service.",
     ctaPrimaryLabel: "Get Started Free",
+    ctaPrimaryHref: "/register",
     ctaSecondaryLabel: "Sign In",
+    ctaSecondaryHref: "/signin",
   },
 };
 

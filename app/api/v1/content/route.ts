@@ -12,7 +12,9 @@ const HeroSchema = z.object({
   headline: z.string().min(1),
   subhead: z.string().min(1),
   ctaPrimaryLabel: z.string().min(1),
+  ctaPrimaryHref: z.string().min(1),
   ctaSecondaryLabel: z.string().min(1),
+  ctaSecondaryHref: z.string().min(1),
 });
 
 const PlatformSchema = z.object({
@@ -65,7 +67,9 @@ const FooterSchema = z.object({
   headline: z.string().min(1),
   paragraph: z.string().min(1),
   ctaPrimaryLabel: z.string().min(1),
+  ctaPrimaryHref: z.string().min(1),
   ctaSecondaryLabel: z.string().min(1),
+  ctaSecondaryHref: z.string().min(1),
 });
 
 const UpdateSchema = z.object({

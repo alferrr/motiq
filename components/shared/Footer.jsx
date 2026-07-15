@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { Fragment } from "react";
+import { resolveHref } from "@/lib/content";
 
 export default function Footer({ content }) {
-  const { headline, paragraph, ctaPrimaryLabel, ctaSecondaryLabel } = content;
+  const {
+    headline,
+    paragraph,
+    ctaPrimaryLabel,
+    ctaPrimaryHref,
+    ctaSecondaryLabel,
+    ctaSecondaryHref,
+  } = content;
 
   return (
     <div
-      className="flex flex-col gap-4 items-center justify-center min-h-[60dvh] text-white p-6 sm:p-12 md:p-20"
+      id="footer"
+      className="flex flex-col gap-4 items-center justify-center min-h-[60dvh] text-white p-6 sm:p-12 md:p-20 scroll-mt-24"
       style={{
         backgroundImage: "url('/footer.png')",
         backgroundSize: "cover",
@@ -29,13 +38,13 @@ export default function Footer({ content }) {
       </p>
       <nav className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto px-6 sm:px-0 mt-4">
         <Link
-          href="/register"
+          href={resolveHref(ctaPrimaryHref)}
           className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-[#0e61d5] font-light text-sm transition-colors hover:bg-[#0e61d5]/90"
         >
           {ctaPrimaryLabel}
         </Link>
         <Link
-          href="/signin"
+          href={resolveHref(ctaSecondaryHref)}
           className="w-full sm:w-auto text-center px-7 py-3 rounded-full border border-white/10 bg-white text-black font-light text-sm transition-colors hover:bg-white/90"
         >
           {ctaSecondaryLabel}

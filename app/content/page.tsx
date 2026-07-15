@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useTheme } from "@/context/ThemeContext";
-import { ALLOWED_IMAGES, SiteContent } from "@/lib/content";
+import { ALLOWED_IMAGES, SECTION_IDS, SiteContent } from "@/lib/content";
 
 const TABS = [
   { id: "hero", label: "Hero" },
@@ -33,6 +33,19 @@ function Field({
       <p className="text-xs text-inherit opacity-70">{label}</p>
       {children}
     </div>
+  );
+}
+
+function LinkFieldHelp() {
+  return (
+    <p className="text-xs opacity-60 -mt-1">
+      A link can be a path (<code>/register</code>), a full URL, or a section
+      id to jump to on this page: {SECTION_IDS.map((id) => (
+        <code key={id} className="mx-0.5">
+          {id}
+        </code>
+      ))}
+    </p>
   );
 }
 
@@ -348,29 +361,56 @@ export default function ContentPage() {
                       />
                     </Field>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Field label="Primary CTA Label">
-                        <input
-                          className={inputCls}
-                          value={content.hero.ctaPrimaryLabel}
-                          onChange={(e) =>
-                            updateSection("hero", {
-                              ctaPrimaryLabel: e.target.value,
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Secondary CTA Label">
-                        <input
-                          className={inputCls}
-                          value={content.hero.ctaSecondaryLabel}
-                          onChange={(e) =>
-                            updateSection("hero", {
-                              ctaSecondaryLabel: e.target.value,
-                            })
-                          }
-                        />
-                      </Field>
+                      <div className="flex flex-col gap-3">
+                        <Field label="Primary CTA Label">
+                          <input
+                            className={inputCls}
+                            value={content.hero.ctaPrimaryLabel}
+                            onChange={(e) =>
+                              updateSection("hero", {
+                                ctaPrimaryLabel: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Primary CTA Link">
+                          <input
+                            className={inputCls}
+                            value={content.hero.ctaPrimaryHref}
+                            onChange={(e) =>
+                              updateSection("hero", {
+                                ctaPrimaryHref: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        <Field label="Secondary CTA Label">
+                          <input
+                            className={inputCls}
+                            value={content.hero.ctaSecondaryLabel}
+                            onChange={(e) =>
+                              updateSection("hero", {
+                                ctaSecondaryLabel: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Secondary CTA Link">
+                          <input
+                            className={inputCls}
+                            value={content.hero.ctaSecondaryHref}
+                            onChange={(e) =>
+                              updateSection("hero", {
+                                ctaSecondaryHref: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                      </div>
                     </div>
+                    <LinkFieldHelp />
                     <SaveButton section="hero" />
                   </>
                 )}
@@ -643,29 +683,56 @@ export default function ContentPage() {
                       />
                     </Field>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Field label="Primary CTA Label">
-                        <input
-                          className={inputCls}
-                          value={content.footer.ctaPrimaryLabel}
-                          onChange={(e) =>
-                            updateSection("footer", {
-                              ctaPrimaryLabel: e.target.value,
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Secondary CTA Label">
-                        <input
-                          className={inputCls}
-                          value={content.footer.ctaSecondaryLabel}
-                          onChange={(e) =>
-                            updateSection("footer", {
-                              ctaSecondaryLabel: e.target.value,
-                            })
-                          }
-                        />
-                      </Field>
+                      <div className="flex flex-col gap-3">
+                        <Field label="Primary CTA Label">
+                          <input
+                            className={inputCls}
+                            value={content.footer.ctaPrimaryLabel}
+                            onChange={(e) =>
+                              updateSection("footer", {
+                                ctaPrimaryLabel: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Primary CTA Link">
+                          <input
+                            className={inputCls}
+                            value={content.footer.ctaPrimaryHref}
+                            onChange={(e) =>
+                              updateSection("footer", {
+                                ctaPrimaryHref: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        <Field label="Secondary CTA Label">
+                          <input
+                            className={inputCls}
+                            value={content.footer.ctaSecondaryLabel}
+                            onChange={(e) =>
+                              updateSection("footer", {
+                                ctaSecondaryLabel: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Secondary CTA Link">
+                          <input
+                            className={inputCls}
+                            value={content.footer.ctaSecondaryHref}
+                            onChange={(e) =>
+                              updateSection("footer", {
+                                ctaSecondaryHref: e.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                      </div>
                     </div>
+                    <LinkFieldHelp />
                     <SaveButton section="footer" />
                   </>
                 )}
