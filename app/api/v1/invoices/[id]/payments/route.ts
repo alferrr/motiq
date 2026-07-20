@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { pool, withTransaction } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
 import { recomputeInvoiceStatus } from "@/lib/invoices";
@@ -25,7 +25,9 @@ export async function POST(
     const body = ManualPaymentSchema.parse(await request.json());
 
     const [[invoice]]: any = await pool.query(
-      `SELECT i.Invoice_ID,
+      `SELECT i.Invoice_ID, i.TotalAmount,
+              COALESCE(SUM(CASE WHEN p.Status IN ('succeeded','partially_refunded')
+                                 THEN p.AmountPaid - p.RefundedAmount ELSE 0 END), 0) AS paidNet,
               c.FullName AS customerName, c.Email AS customerEmail,
               co.Name AS companyName, co.ThemeColor,
               co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
@@ -34,20 +36,31 @@ export async function POST(
        JOIN Vehicle  v  ON v.Vehicle_ID = rj.Vehicle_ID
        JOIN Customer c  ON c.Customer_ID = v.Customer_ID
        JOIN Company  co ON co.Company_ID = c.Company_ID
+       LEFT JOIN Payment p ON p.Invoice_ID = i.Invoice_ID
        WHERE i.Invoice_ID = ? AND c.Company_ID = ?
+       GROUP BY i.Invoice_ID
        LIMIT 1`,
       [id, companyId],
     );
     if (!invoice)
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
-    await pool.query(
-      `INSERT INTO Payment (Invoice_ID, PaymentMethod, AmountPaid, PaymentDate, ReferenceNumber, Status)
-       VALUES (?, ?, ?, CURDATE(), ?, 'succeeded')`,
-      [id, body.method, body.amount, body.referenceNumber ?? null],
-    );
+    const balance = Number(invoice.TotalAmount) - Number(invoice.paidNet);
+    if (body.amount > balance)
+      return NextResponse.json(
+        { error: `Payment amount exceeds outstanding balance of ₱${balance.toFixed(2)}` },
+        { status: 400 },
+      );
 
-    const result = await recomputeInvoiceStatus(Number(id));
+    const result = await withTransaction(async (conn) => {
+      await conn.query(
+        `INSERT INTO Payment (Invoice_ID, PaymentMethod, AmountPaid, PaymentDate, ReferenceNumber, Status)
+         VALUES (?, ?, ?, CURDATE(), ?, 'succeeded')`,
+        [id, body.method, body.amount, body.referenceNumber ?? null],
+      );
+
+      return recomputeInvoiceStatus(Number(id), conn);
+    });
 
     if (invoice.customerEmail) {
       const { subject, html } = paymentReceiptEmail({

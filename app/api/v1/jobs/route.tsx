@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const like = `%${search}%`;
 
-    const statusClause = status ? `AND rj.Status = '${status}'` : "";
+    const statusClause = status ? "AND rj.Status = ?" : "";
+    const statusParam = status ? [status] : [];
 
     const [rows]: any = await pool.query(
       `SELECT
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
          AND (c.FullName LIKE ? OR v.PlateNumber LIKE ? OR v.Make LIKE ? OR rj.ReportedIssue LIKE ?)
        ORDER BY rj.CreatedAt DESC
        LIMIT ? OFFSET ?`,
-      [companyId, like, like, like, like, limit, offset],
+      [companyId, ...statusParam, like, like, like, like, limit, offset],
     );
 
     const [[{ total }]]: any = await pool.query(
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
        WHERE c.Company_ID = ?
          ${statusClause}
          AND (c.FullName LIKE ? OR v.PlateNumber LIKE ? OR v.Make LIKE ? OR rj.ReportedIssue LIKE ?)`,
-      [companyId, like, like, like, like],
+      [companyId, ...statusParam, like, like, like, like],
     );
 
     // vehicles dropdown
@@ -79,6 +80,18 @@ export async function GET(request: NextRequest) {
       [companyId],
     );
 
+    // scheduled appointments dropdown, for optionally linking a new job order
+    const [appointments]: any = await pool.query(
+      `SELECT a.Appointment_ID, a.AppointmentDate, a.AppointmentTime,
+              c.FullName AS customerName, v.Make, v.Model, v.PlateNumber
+       FROM Appointment a
+       JOIN Customer c ON c.Customer_ID = a.Customer_ID
+       JOIN Vehicle  v ON v.Vehicle_ID  = a.Vehicle_ID
+       WHERE a.Company_ID = ? AND a.Status = 'Scheduled'
+       ORDER BY a.AppointmentDate ASC, a.AppointmentTime ASC`,
+      [companyId],
+    );
+
     return NextResponse.json({
       jobs: rows,
       total,
@@ -86,6 +99,7 @@ export async function GET(request: NextRequest) {
       limit,
       vehicles,
       mechanics,
+      appointments,
     });
   } catch (err) {
     console.error(err);

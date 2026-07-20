@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { pool, withTransaction } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { retrieveKasaPayment } from "@/lib/kasa";
 import { recomputeInvoiceStatus } from "@/lib/invoices";
+import { sendEmail } from "@/lib/email";
+import { paymentReceiptEmail } from "@/lib/emailTemplates";
 
 export async function POST(
   request: NextRequest,
@@ -15,7 +17,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const [[payment]]: any = await pool.query(
-      `SELECT p.Payment_ID, p.Invoice_ID, p.KasaPaymentId
+      `SELECT p.Payment_ID, p.Invoice_ID, p.KasaPaymentId, p.Status, p.AmountPaid, p.PaymentMethod
        FROM Payment p
        JOIN Invoice  i  ON i.Invoice_ID = p.Invoice_ID
        JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
@@ -33,14 +35,51 @@ export async function POST(
         { status: 400 },
       );
 
+    const wasAlreadySucceeded = payment.Status === "succeeded";
     const kasaPayment = await retrieveKasaPayment(payment.KasaPaymentId);
 
-    await pool.query(`UPDATE Payment SET Status = ? WHERE Payment_ID = ?`, [
-      kasaPayment.status,
-      id,
-    ]);
+    const result = await withTransaction(async (conn) => {
+      await conn.query(`UPDATE Payment SET Status = ? WHERE Payment_ID = ?`, [
+        kasaPayment.status,
+        id,
+      ]);
+      return recomputeInvoiceStatus(payment.Invoice_ID, conn);
+    });
 
-    const result = await recomputeInvoiceStatus(payment.Invoice_ID);
+    // some Kasa methods only confirm on manual refresh rather than the
+    // customer's return-trip callback, so this is a genuine first-success
+    // path — send the receipt exactly once, same guard as the callback route
+    if (kasaPayment.status === "succeeded" && !wasAlreadySucceeded) {
+      const [[recipient]]: any = await pool.query(
+        `SELECT c.FullName AS customerName, c.Email AS customerEmail,
+                co.Name AS companyName, co.ThemeColor,
+                co.Email AS companyEmail, co.ContactNumber AS companyContact, co.Address AS companyAddress
+         FROM Invoice i
+         JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
+         JOIN Vehicle  v  ON v.Vehicle_ID = rj.Vehicle_ID
+         JOIN Customer c  ON c.Customer_ID = v.Customer_ID
+         JOIN Company  co ON co.Company_ID = c.Company_ID
+         WHERE i.Invoice_ID = ?
+         LIMIT 1`,
+        [payment.Invoice_ID],
+      );
+      if (recipient?.customerEmail) {
+        const { subject, html } = paymentReceiptEmail({
+          companyName: recipient.companyName,
+          themeColor: recipient.ThemeColor,
+          companyEmail: recipient.companyEmail,
+          companyContact: recipient.companyContact,
+          companyAddress: recipient.companyAddress,
+          customerName: recipient.customerName,
+          invoiceId: payment.Invoice_ID,
+          amountPaid: Number(payment.AmountPaid),
+          method: payment.PaymentMethod,
+          balance: Math.max(0, result.totalAmount - result.paidNet),
+          invoiceStatus: result.invoiceStatus,
+        });
+        await sendEmail({ to: recipient.customerEmail, subject, html });
+      }
+    }
 
     return NextResponse.json({ status: kasaPayment.status, ...result });
   } catch (err) {

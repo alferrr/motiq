@@ -4,7 +4,8 @@
 -- Consolidated, deployable schema for a fresh install. Represents the current
 -- state of the database, including everything applied incrementally via
 -- db/migrations/002_kasa_payments.sql, 003_customer_email.sql,
--- 004_car_brands.sql, 005_site_content.sql, and 006_site_content_cta_links.sql.
+-- 004_car_brands.sql, 005_site_content.sql, 006_site_content_cta_links.sql,
+-- and 007_invoice_payment_reference.sql.
 -- Use this file to stand up a
 -- new database from scratch; db/migrations/ remains as historical record of
 -- how the schema evolved.
@@ -259,6 +260,7 @@ CREATE TABLE Invoice (
   DateIssued     DATE                                         NOT NULL,
   TotalAmount    DECIMAL(10, 2)                              NOT NULL,
   Status          ENUM('Unpaid', 'Partially Paid', 'Paid')     NOT NULL DEFAULT 'Unpaid',
+  PaymentReference VARCHAR(64)                                 DEFAULT NULL COMMENT 'binds a Kasa checkout session to this invoice',
   KEY idx_invoice_status (Status),
   KEY idx_invoice_date_issued (DateIssued),
   UNIQUE KEY uq_invoice_job (Job_ID),

@@ -1,11 +1,21 @@
+import mysql from "mysql2/promise";
+import crypto from "crypto";
 import { pool } from "@/lib/db";
 import { buildKasaCheckoutUrl, pesosToCentavos } from "@/lib/kasa";
 import { sendEmail } from "@/lib/email";
 import { invoiceGeneratedEmail } from "@/lib/emailTemplates";
 
-// recomputes and persists Invoice.Status from its Payment rows
-export async function recomputeInvoiceStatus(invoiceId: number) {
-  const [[{ totalAmount, paidNet }]]: any = await pool.query(
+type Executor = typeof pool | mysql.PoolConnection;
+
+// recomputes and persists Invoice.Status from its Payment rows. Pass the
+// transaction's conn when called alongside a Payment insert/update in the
+// same transaction, so this reads the uncommitted write instead of a stale
+// pre-commit snapshot under REPEATABLE READ.
+export async function recomputeInvoiceStatus(
+  invoiceId: number,
+  executor: Executor = pool,
+) {
+  const [[{ totalAmount, paidNet }]]: any = await executor.query(
     `SELECT i.TotalAmount AS totalAmount,
             COALESCE(SUM(CASE WHEN p.Status IN ('succeeded','partially_refunded')
                                THEN p.AmountPaid - p.RefundedAmount ELSE 0 END), 0) AS paidNet
@@ -17,13 +27,13 @@ export async function recomputeInvoiceStatus(invoiceId: number) {
   );
 
   const invoiceStatus =
-    Number(paidNet) >= Number(totalAmount) && Number(totalAmount) > 0
+    Number(totalAmount) === 0 || Number(paidNet) >= Number(totalAmount)
       ? "Paid"
       : Number(paidNet) > 0
         ? "Partially Paid"
         : "Unpaid";
 
-  await pool.query(`UPDATE Invoice SET Status = ? WHERE Invoice_ID = ?`, [
+  await executor.query(`UPDATE Invoice SET Status = ? WHERE Invoice_ID = ?`, [
     invoiceStatus,
     invoiceId,
   ]);
@@ -33,6 +43,20 @@ export async function recomputeInvoiceStatus(invoiceId: number) {
     paidNet: Number(paidNet),
     totalAmount: Number(totalAmount),
   };
+}
+
+// generates and persists an unguessable, per-invoice reference used to bind
+// a Kasa checkout session to the invoice it's paying (see
+// app/api/v1/payment-callback/[id]/route.ts)
+export async function createPaymentReference(
+  invoiceId: number,
+): Promise<string> {
+  const reference = crypto.randomBytes(24).toString("hex");
+  await pool.query(`UPDATE Invoice SET PaymentReference = ? WHERE Invoice_ID = ?`, [
+    reference,
+    invoiceId,
+  ]);
+  return reference;
 }
 
 export type CreateInvoiceResult =
@@ -72,15 +96,15 @@ export async function createInvoiceForJob(
     `SELECT sc.ServiceName, sc.LaborRate
      FROM JobService js
      JOIN ServiceCatalog sc ON sc.Service_ID = js.Service_ID
-     WHERE js.Job_ID = ?`,
-    [jobId],
+     WHERE js.Job_ID = ? AND sc.Company_ID = ?`,
+    [jobId, companyId],
   );
   const [parts]: any = await pool.query(
     `SELECT pi.PartName, jp.QuantityUsed, pi.UnitPrice
      FROM JobParts jp
      JOIN PartsInventory pi ON pi.Part_ID = jp.Part_ID
-     WHERE jp.Job_ID = ?`,
-    [jobId],
+     WHERE jp.Job_ID = ? AND pi.Company_ID = ?`,
+    [jobId, companyId],
   );
 
   const lineItems = [
@@ -97,22 +121,24 @@ export async function createInvoiceForJob(
 
   const [result]: any = await pool.query(
     `INSERT INTO Invoice (Job_ID, DateIssued, TotalAmount, Status)
-     VALUES (?, CURDATE(), ?, 'Unpaid')`,
-    [jobId, totalAmount],
+     VALUES (?, CURDATE(), ?, ?)`,
+    [jobId, totalAmount, totalAmount === 0 ? "Paid" : "Unpaid"],
   );
   const invoiceId = result.insertId;
 
   if (job.customerEmail) {
     let paymentUrl: string | null = null;
     if (totalAmount > 0 && process.env.KASA_SECRET_KEY && process.env.KASA_BASE_URL) {
+      const reference = await createPaymentReference(invoiceId);
       const returnUrl = new URL(
         `/api/v1/payment-callback/${invoiceId}`,
         origin,
-      ).toString();
+      );
+      returnUrl.searchParams.set("ref", reference);
       paymentUrl = buildKasaCheckoutUrl({
         amountCentavos: pesosToCentavos(totalAmount),
         description: `Invoice #${invoiceId} — ${job.companyName}`,
-        returnUrl,
+        returnUrl: returnUrl.toString(),
       });
     }
 

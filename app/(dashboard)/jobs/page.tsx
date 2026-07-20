@@ -74,10 +74,20 @@ type MechanicOption = {
   FullName: string;
   Specialization: string;
 };
+type AppointmentOption = {
+  Appointment_ID: number;
+  AppointmentDate: string;
+  AppointmentTime: string;
+  customerName: string;
+  Make: string;
+  Model: string;
+  PlateNumber: string;
+};
 
 type FormState = {
   vehicleId: string;
   mechanicId: string;
+  appointmentId: string;
   jobDate: string;
   reportedIssue: string;
 };
@@ -121,6 +131,7 @@ function JobForm({
   initial,
   vehicles,
   mechanics,
+  appointments,
   onSubmit,
   onCancel,
   loading,
@@ -133,6 +144,7 @@ function JobForm({
   initial?: Partial<FormState>;
   vehicles: VehicleOption[];
   mechanics: MechanicOption[];
+  appointments: AppointmentOption[];
   onSubmit: (data: FormState) => void;
   onCancel: () => void;
   loading: boolean;
@@ -145,6 +157,7 @@ function JobForm({
   const [form, setForm] = useState<FormState>({
     vehicleId: "",
     mechanicId: "",
+    appointmentId: "",
     jobDate: new Date().toISOString().split("T")[0],
     reportedIssue: "",
     ...initial,
@@ -246,6 +259,26 @@ function JobForm({
         />
       </div>
 
+      <div className="flex flex-col gap-1.5">
+        <p className={`text-xs ${muted}`}>
+          Link to Appointment <span className={muted}>(optional)</span>
+        </p>
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search scheduled appointments…"
+          emptyMessage="No scheduled appointments found"
+          clearable
+          value={form.appointmentId}
+          onChange={(v) => setForm((p) => ({ ...p, appointmentId: v }))}
+          options={appointments.map((a) => ({
+            value: String(a.Appointment_ID),
+            label: `${a.customerName} — ${a.Make} ${a.Model} (${a.PlateNumber}) · ${new Date(
+              a.AppointmentDate,
+            ).toLocaleDateString("en-PH", { month: "short", day: "numeric" })} ${a.AppointmentTime}`,
+          }))}
+        />
+      </div>
+
       <div
         className={`sticky bottom-0 -mx-5 -mb-5 px-5 py-4 flex gap-3 border-t ${border} ${dark ? "bg-[#111318]" : "bg-white"}`}
       >
@@ -288,6 +321,7 @@ type PartRow = { partId: number; quantity: number };
 
 function StatusModal({
   job,
+  mechanics,
   onClose,
   onSave,
   dark,
@@ -297,6 +331,7 @@ function StatusModal({
   primary,
 }: {
   job: Job;
+  mechanics: MechanicOption[];
   onClose: () => void;
   onSave: (
     status: string,
@@ -304,6 +339,7 @@ function StatusModal({
     laborHours: string,
     serviceIds: number[],
     parts: PartRow[],
+    mechanicId: string,
   ) => void;
   dark: boolean;
   card: string;
@@ -317,6 +353,7 @@ function StatusModal({
   const [laborHours, setLaborHours] = useState(
     job.LaborHours ? String(job.LaborHours) : "",
   );
+  const [mechanicId, setMechanicId] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
@@ -345,6 +382,7 @@ function StatusModal({
           quantity: p.QuantityUsed,
         })),
       );
+      setMechanicId(String(detailRes.data.job.Mechanic_ID));
       setAllServices(servicesRes.data.services);
       setAllParts(partsRes.data.parts);
       setLoadingCatalog(false);
@@ -409,6 +447,22 @@ function StatusModal({
             </option>
           ))}
         </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <p className={`text-xs ${muted}`}>Assign Mechanic</p>
+        <SearchableSelect
+          dark={dark}
+          placeholder="Search mechanics…"
+          emptyMessage="No mechanics found"
+          value={mechanicId}
+          onChange={setMechanicId}
+          options={mechanics.map((m) => ({
+            value: String(m.Mechanic_ID),
+            label: m.Specialization
+              ? `${m.FullName} — ${m.Specialization}`
+              : m.FullName,
+          }))}
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <p className={`text-xs ${muted}`}>
@@ -557,7 +611,14 @@ function StatusModal({
         <button
           onClick={() => {
             setLoading(true);
-            onSave(status, diagnosis, laborHours, selectedServiceIds, partRows);
+            onSave(
+              status,
+              diagnosis,
+              laborHours,
+              selectedServiceIds,
+              partRows,
+              mechanicId,
+            );
           }}
           disabled={loading || loadingCatalog}
           className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60"
@@ -574,6 +635,8 @@ function JobDrawerContent({
   jobId,
   onStatusUpdate,
   onDelete,
+  userRole,
+  currentUserId,
   dark,
   text,
   muted,
@@ -584,6 +647,8 @@ function JobDrawerContent({
   jobId: number;
   onStatusUpdate: (job: Job) => void;
   onDelete: (id: number) => void;
+  userRole: string;
+  currentUserId: number | null;
   dark: boolean;
   text: string;
   muted: string;
@@ -698,22 +763,27 @@ function JobDrawerContent({
           </p>
         )}
 
-        {/* actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => onStatusUpdate(job)}
-            className="flex-1 py-2 rounded-xl text-xs font-medium text-white transition-colors"
-            style={{ backgroundColor: primary }}
-          >
-            Update Status
-          </button>
-          <button
-            onClick={() => onDelete(job.Job_ID)}
-            className="flex-1 py-2 rounded-xl text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
-          >
-            Delete
-          </button>
-        </div>
+        {/* actions — Mechanics may only update jobs assigned to them, and
+            can never delete a job order (Front Desk/Admin only) */}
+        {(userRole !== "Mechanic" || job.User_ID === currentUserId) && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onStatusUpdate(job)}
+              className="flex-1 py-2 rounded-xl text-xs font-medium text-white transition-colors"
+              style={{ backgroundColor: primary }}
+            >
+              Update Status
+            </button>
+            {userRole !== "Mechanic" && (
+              <button
+                onClick={() => onDelete(job.Job_ID)}
+                className="flex-1 py-2 rounded-xl text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* services */}
@@ -817,6 +887,8 @@ function JobOrdersPageInner() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [mechanics, setMechanics] = useState<MechanicOption[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentOption[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -860,6 +932,7 @@ function JobOrdersPageInner() {
       setTotal(res.data.total);
       setVehicles(res.data.vehicles);
       setMechanics(res.data.mechanics);
+      setAppointments(res.data.appointments);
     } catch {
       setError("Failed to load job orders.");
     } finally {
@@ -870,6 +943,14 @@ function JobOrdersPageInner() {
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
+
+  useEffect(() => {
+    if (userRole !== "Mechanic") return;
+    axios
+      .get("/api/v1/users/me")
+      .then((res) => setCurrentUserId(res.data.user.User_ID))
+      .catch(() => {});
+  }, [userRole]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -895,6 +976,7 @@ function JobOrdersPageInner() {
       await axios.post("/api/v1/jobs", {
         vehicleId: Number(data.vehicleId),
         mechanicId: Number(data.mechanicId),
+        appointmentId: data.appointmentId ? Number(data.appointmentId) : undefined,
         jobDate: data.jobDate,
         reportedIssue: data.reportedIssue || undefined,
       });
@@ -915,6 +997,7 @@ function JobOrdersPageInner() {
     laborHours: string,
     serviceIds: number[],
     parts: PartRow[],
+    mechanicId: string,
   ) => {
     if (!statusTarget) return;
     try {
@@ -924,6 +1007,7 @@ function JobOrdersPageInner() {
         laborHours: laborHours ? Number(laborHours) : undefined,
         serviceIds,
         parts: parts.map((p) => ({ partId: p.partId, quantity: p.quantity })),
+        mechanicId: mechanicId ? Number(mechanicId) : undefined,
       });
       setStatusTarget(null);
       fetchJobs();
@@ -1138,6 +1222,7 @@ function JobOrdersPageInner() {
             <JobForm
               vehicles={vehicles}
               mechanics={mechanics}
+              appointments={appointments}
               onSubmit={handleAdd}
               onCancel={() => setShowAdd(false)}
               loading={formLoading}
@@ -1161,6 +1246,7 @@ function JobOrdersPageInner() {
           >
             <StatusModal
               job={statusTarget}
+              mechanics={mechanics}
               onClose={() => setStatusTarget(null)}
               onSave={handleStatusSave}
               dark={dark}
@@ -1227,6 +1313,8 @@ function JobOrdersPageInner() {
               setDeleteTarget(id);
               setDrawerJobId(null);
             }}
+            userRole={userRole}
+            currentUserId={currentUserId}
             dark={dark}
             text={text}
             muted={muted}

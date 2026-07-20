@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { pool, withTransaction } from "@/lib/db";
 import { retrieveKasaPayment, KASA_PROVIDER_LABEL, centavosToPesos } from "@/lib/kasa";
 import { recomputeInvoiceStatus } from "@/lib/invoices";
 import { sendEmail } from "@/lib/email";
@@ -19,39 +19,50 @@ export async function GET(
 
   try {
     const paymentId = request.nextUrl.searchParams.get("payment_id");
-    if (!paymentId) return statusPage("error");
+    const ref = request.nextUrl.searchParams.get("ref");
+    if (!paymentId || !ref) return statusPage("error");
 
+    // verify this callback's `ref` actually belongs to this invoice before
+    // ever contacting Kasa — otherwise any valid payment_id (including an
+    // unrelated customer's own payment) could be replayed against any
+    // invoice URL to mark it paid
     const [[invoice]]: any = await pool.query(
-      `SELECT Invoice_ID FROM Invoice WHERE Invoice_ID = ? LIMIT 1`,
+      `SELECT Invoice_ID, PaymentReference FROM Invoice WHERE Invoice_ID = ? LIMIT 1`,
       [id],
     );
-    if (!invoice) return statusPage("error");
+    if (!invoice || !invoice.PaymentReference || invoice.PaymentReference !== ref)
+      return statusPage("error");
 
     const payment = await retrieveKasaPayment(paymentId);
 
-    // read prior status before upserting so we only email once, the moment
-    // the payment first becomes 'succeeded' (not on every return-page hit)
-    const [[existing]]: any = await pool.query(
-      `SELECT Status FROM Payment WHERE KasaPaymentId = ? LIMIT 1`,
-      [payment.id],
-    );
-    const wasAlreadySucceeded = existing?.Status === "succeeded";
+    let wasAlreadySucceeded = false;
+    let result!: Awaited<ReturnType<typeof recomputeInvoiceStatus>>;
+    await withTransaction(async (conn) => {
+      // read prior status before upserting so we only email once, the
+      // moment the payment first becomes 'succeeded' (not on every
+      // return-page hit)
+      const [[existing]]: any = await conn.query(
+        `SELECT Status FROM Payment WHERE KasaPaymentId = ? LIMIT 1`,
+        [payment.id],
+      );
+      wasAlreadySucceeded = existing?.Status === "succeeded";
 
-    await pool.query(
-      `INSERT INTO Payment (Invoice_ID, PaymentMethod, AmountPaid, PaymentDate, ReferenceNumber, KasaPaymentId, Status)
-       VALUES (?, ?, ?, CURDATE(), ?, ?, ?)
-       ON DUPLICATE KEY UPDATE Status = VALUES(Status), AmountPaid = VALUES(AmountPaid)`,
-      [
-        id,
-        KASA_PROVIDER_LABEL[payment.provider],
-        centavosToPesos(payment.amount),
-        payment.id,
-        payment.id,
-        payment.status,
-      ],
-    );
+      await conn.query(
+        `INSERT INTO Payment (Invoice_ID, PaymentMethod, AmountPaid, PaymentDate, ReferenceNumber, KasaPaymentId, Status)
+         VALUES (?, ?, ?, CURDATE(), ?, ?, ?)
+         ON DUPLICATE KEY UPDATE Status = VALUES(Status), AmountPaid = VALUES(AmountPaid)`,
+        [
+          id,
+          KASA_PROVIDER_LABEL[payment.provider],
+          centavosToPesos(payment.amount),
+          payment.id,
+          payment.id,
+          payment.status,
+        ],
+      );
 
-    const result = await recomputeInvoiceStatus(Number(id));
+      result = await recomputeInvoiceStatus(Number(id), conn);
+    });
 
     if (payment.status === "succeeded" && !wasAlreadySucceeded) {
       const [[recipient]]: any = await pool.query(

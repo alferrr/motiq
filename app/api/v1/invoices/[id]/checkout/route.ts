@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { buildKasaCheckoutUrl, pesosToCentavos } from "@/lib/kasa";
+import { createPaymentReference } from "@/lib/invoices";
 
 export async function POST(
   request: NextRequest,
@@ -44,15 +45,17 @@ export async function POST(
         { status: 500 },
       );
 
+    const reference = await createPaymentReference(Number(id));
     const returnUrl = new URL(
       `/api/v1/payment-callback/${id}`,
       request.nextUrl.origin,
-    ).toString();
+    );
+    returnUrl.searchParams.set("ref", reference);
 
     const url = buildKasaCheckoutUrl({
       amountCentavos: pesosToCentavos(balance),
       description: `Invoice #${id} — ${row.companyName}`,
-      returnUrl,
+      returnUrl: returnUrl.toString(),
     });
 
     return NextResponse.json({ url, balance });
