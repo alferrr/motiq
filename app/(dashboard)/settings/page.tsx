@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import axios from "axios";
 import PageHeader from "@/components/shared/PageHeader";
-import { FaMoon, FaSun, FaCheck } from "react-icons/fa";
+import { FaMoon, FaSun, FaCheck, FaLink, FaCheckCircle } from "react-icons/fa";
 
 type Company = {
   Name: string;
@@ -24,6 +24,15 @@ type Me = {
   Role: string;
 };
 
+type KasaStatus = {
+  connected: boolean;
+  merchantSlug: string | null;
+  merchantName: string | null;
+  environment: "live" | "sandbox" | null;
+  connectedAt: string | null;
+  maskedKey: string | null;
+};
+
 const ACCENT_COLORS = [
   "#2563eb",
   "#7c3aed",
@@ -37,6 +46,7 @@ const ACCENT_COLORS = [
 const TABS = [
   { id: "appearance", label: "Appearance" },
   { id: "company", label: "Company Profile" },
+  { id: "kasa", label: "Kasa Payments" },
   { id: "account", label: "Your Account" },
 ] as const;
 
@@ -58,10 +68,12 @@ function Field({
 }
 
 export default function SettingsPage() {
-  const { dark, toggleTheme, primaryColor, setPrimaryColor, setCompanyName } =
+  const { dark, toggleTheme, primaryColor, setPrimaryColor, setCompanyName, userRole } =
     useTheme();
+  const isAdmin = userRole === "Admin";
 
   const [activeTab, setActiveTab] = useState<TabId>("appearance");
+  const visibleTabs = TABS.filter((t) => t.id !== "kasa" || isAdmin);
 
   const innerBg = dark ? "bg-[#0d0f13]" : "bg-[#f8f9fb]";
   const card = dark ? "bg-[#111318] border-white/5" : "bg-white border-gray-100";
@@ -81,6 +93,60 @@ export default function SettingsPage() {
   const [meSaving, setMeSaving] = useState(false);
   const [meMsg, setMeMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  const [kasaStatus, setKasaStatus] = useState<KasaStatus | null>(null);
+  const [kasaLoading, setKasaLoading] = useState(true);
+  const [kasaBusy, setKasaBusy] = useState(false);
+  const [kasaMsg, setKasaMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [secretKeyInput, setSecretKeyInput] = useState("");
+
+  const fetchKasaStatus = () =>
+    axios
+      .get("/api/v1/company/kasa")
+      .then((res) => setKasaStatus(res.data))
+      .catch(() => {})
+      .finally(() => setKasaLoading(false));
+
+  const connectKasa = async () => {
+    if (!secretKeyInput.trim()) return;
+    setKasaBusy(true);
+    setKasaMsg(null);
+    try {
+      const res = await axios.post("/api/v1/company/kasa", {
+        secretKey: secretKeyInput.trim(),
+      });
+      setSecretKeyInput("");
+      setKasaMsg({
+        type: "ok",
+        text: `Connected to ${res.data.merchantName} (${res.data.environment}).`,
+      });
+      await fetchKasaStatus();
+    } catch (err: any) {
+      setKasaMsg({
+        type: "err",
+        text: err.response?.data?.error ?? "Failed to connect Kasa account.",
+      });
+    } finally {
+      setKasaBusy(false);
+    }
+  };
+
+  const disconnectKasa = async () => {
+    setKasaBusy(true);
+    setKasaMsg(null);
+    try {
+      await axios.delete("/api/v1/company/kasa");
+      setKasaMsg({ type: "ok", text: "Kasa account disconnected." });
+      await fetchKasaStatus();
+    } catch (err: any) {
+      setKasaMsg({
+        type: "err",
+        text: err.response?.data?.error ?? "Failed to disconnect Kasa account.",
+      });
+    } finally {
+      setKasaBusy(false);
+    }
+  };
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -99,7 +165,10 @@ export default function SettingsPage() {
       .then((res) => setMe(res.data.user))
       .catch(() => {})
       .finally(() => setMeLoading(false));
-  }, []);
+
+    if (isAdmin) fetchKasaStatus();
+    else setKasaLoading(false);
+  }, [isAdmin]);
 
   const saveCompany = async () => {
     if (!company) return;
@@ -194,7 +263,7 @@ export default function SettingsPage() {
         </div>
 
         <div className={`flex items-center gap-1 border-b overflow-x-auto ${border}`}>
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -352,6 +421,101 @@ export default function SettingsPage() {
                 </div>
               </>
             ))}
+
+          {activeTab === "kasa" && isAdmin && (
+            kasaLoading ? (
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-10 w-full rounded-xl bg-white/5 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <p className={`text-xs ${muted}`}>
+                  Link your garage&apos;s own Kasa account so customer payments
+                  and refunds go directly to you, instead of a shared account.
+                </p>
+                {kasaMsg && (
+                  <p className={`text-xs ${kasaMsg.type === "ok" ? "text-emerald-500" : "text-red-400"}`}>
+                    {kasaMsg.text}
+                  </p>
+                )}
+
+                {kasaStatus?.connected ? (
+                  <>
+                    <div
+                      className={`flex items-center gap-3 rounded-xl p-4 ${dark ? "bg-white/3" : "bg-gray-50"}`}
+                    >
+                      <FaCheckCircle size={18} className="text-emerald-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${text}`}>
+                          {kasaStatus.merchantName}
+                          <span
+                            className={`ml-2 text-[10px] font-medium px-2 py-0.5 rounded-full uppercase ${
+                              kasaStatus.environment === "live"
+                                ? "bg-emerald-500/15 text-emerald-500"
+                                : "bg-amber-500/15 text-amber-500"
+                            }`}
+                          >
+                            {kasaStatus.environment}
+                          </span>
+                        </p>
+                        <p className={`text-xs mt-0.5 font-mono ${muted}`}>
+                          {kasaStatus.maskedKey}
+                        </p>
+                        {kasaStatus.connectedAt && (
+                          <p className={`text-[10px] mt-1 ${muted}`}>
+                            Connected{" "}
+                            {new Date(kasaStatus.connectedAt).toLocaleDateString("en-PH", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={disconnectKasa}
+                        disabled={kasaBusy}
+                        className={`px-5 py-2.5 rounded-xl border text-sm font-medium transition-colors disabled:opacity-60 ${dark ? "border-red-900/50 text-red-400 hover:bg-red-900/20" : "border-red-200 text-red-500 hover:bg-red-50"}`}
+                      >
+                        {kasaBusy ? "Disconnecting…" : "Disconnect Kasa"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Field label="Kasa Secret Key">
+                      <input
+                        className={`${inputCls} font-mono`}
+                        placeholder="sk_sandbox_… or sk_live_…"
+                        value={secretKeyInput}
+                        onChange={(e) => setSecretKeyInput(e.target.value)}
+                      />
+                    </Field>
+                    <p className={`text-[11px] ${muted}`}>
+                      Find this under your Kasa Dashboard&apos;s API Keys page.
+                      Only the secret key is stored, encrypted, and never
+                      shown again in full.
+                    </p>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={connectKasa}
+                        disabled={kasaBusy || !secretKeyInput.trim()}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-60"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        <FaLink size={11} />
+                        {kasaBusy ? "Connecting…" : "Connect Kasa"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )
+          )}
 
           {activeTab === "account" &&
             (meLoading || !me ? (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, withTransaction } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
-import { retrieveKasaPayment } from "@/lib/kasa";
+import { retrieveKasaPayment, getCompanyKasaCredentials } from "@/lib/kasa";
 import { recomputeInvoiceStatus } from "@/lib/invoices";
 import { sendEmail } from "@/lib/email";
 import { paymentReceiptEmail } from "@/lib/emailTemplates";
@@ -35,8 +35,15 @@ export async function POST(
         { status: 400 },
       );
 
+    const kasaCreds = await getCompanyKasaCredentials(companyId);
+    if (!kasaCreds)
+      return NextResponse.json(
+        { error: "Connect your Kasa account from Settings > Kasa Payments first" },
+        { status: 400 },
+      );
+
     const wasAlreadySucceeded = payment.Status === "succeeded";
-    const kasaPayment = await retrieveKasaPayment(payment.KasaPaymentId);
+    const kasaPayment = await retrieveKasaPayment(kasaCreds.apiKey, payment.KasaPaymentId);
 
     const result = await withTransaction(async (conn) => {
       await conn.query(`UPDATE Payment SET Status = ? WHERE Payment_ID = ?`, [

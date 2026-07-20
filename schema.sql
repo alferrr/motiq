@@ -5,7 +5,7 @@
 -- state of the database, including everything applied incrementally via
 -- db/migrations/002_kasa_payments.sql, 003_customer_email.sql,
 -- 004_car_brands.sql, 005_site_content.sql, 006_site_content_cta_links.sql,
--- and 007_invoice_payment_reference.sql.
+-- 007_invoice_payment_reference.sql, and 008_company_kasa_link.sql.
 -- Use this file to stand up a
 -- new database from scratch; db/migrations/ remains as historical record of
 -- how the schema evolved.
@@ -49,6 +49,11 @@ CREATE TABLE Company (
   OwnerIdNumber           VARCHAR(100)  NULL,
   ThemeColor              VARCHAR(7)    NOT NULL DEFAULT '#2563eb',
   CreatedAt               DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KasaSecretKey           TEXT          DEFAULT NULL COMMENT 'AES-256-GCM encrypted, base64',
+  KasaMerchantSlug        VARCHAR(100)  DEFAULT NULL,
+  KasaMerchantName        VARCHAR(150)  DEFAULT NULL,
+  KasaEnvironment         ENUM('live', 'sandbox') DEFAULT NULL,
+  KasaConnectedAt         DATETIME      DEFAULT NULL,
   UNIQUE KEY uq_company_email (Email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

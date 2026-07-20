@@ -1,7 +1,7 @@
 import mysql from "mysql2/promise";
 import crypto from "crypto";
 import { pool } from "@/lib/db";
-import { buildKasaCheckoutUrl, pesosToCentavos } from "@/lib/kasa";
+import { buildKasaCheckoutUrl, getCompanyKasaCredentials, pesosToCentavos } from "@/lib/kasa";
 import { sendEmail } from "@/lib/email";
 import { invoiceGeneratedEmail } from "@/lib/emailTemplates";
 
@@ -128,7 +128,8 @@ export async function createInvoiceForJob(
 
   if (job.customerEmail) {
     let paymentUrl: string | null = null;
-    if (totalAmount > 0 && process.env.KASA_SECRET_KEY && process.env.KASA_BASE_URL) {
+    const kasaCreds = totalAmount > 0 ? await getCompanyKasaCredentials(companyId) : null;
+    if (kasaCreds) {
       const reference = await createPaymentReference(invoiceId);
       const returnUrl = new URL(
         `/api/v1/payment-callback/${invoiceId}`,
@@ -139,6 +140,7 @@ export async function createInvoiceForJob(
         amountCentavos: pesosToCentavos(totalAmount),
         description: `Invoice #${invoiceId} — ${job.companyName}`,
         returnUrl: returnUrl.toString(),
+        merchantSlug: kasaCreds.merchantSlug,
       });
     }
 

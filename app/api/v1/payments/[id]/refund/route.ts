@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
 import { z } from "zod";
-import { createKasaRefund, pesosToCentavos } from "@/lib/kasa";
+import { createKasaRefund, getCompanyKasaCredentials, pesosToCentavos } from "@/lib/kasa";
 import { recomputeInvoiceStatus } from "@/lib/invoices";
 
 const RefundSchema = z.object({
@@ -23,6 +23,13 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = RefundSchema.parse(await request.json().catch(() => ({})));
+
+    const kasaCreds = await getCompanyKasaCredentials(companyId);
+    if (!kasaCreds)
+      return NextResponse.json(
+        { error: "Connect your Kasa account from Settings > Kasa Payments first" },
+        { status: 400 },
+      );
 
     const result = await withTransaction(async (conn) => {
       // lock the row for the duration of the transaction so a concurrent
@@ -63,7 +70,7 @@ export async function POST(
           httpStatus: 400,
         } as const;
 
-      await createKasaRefund({
+      await createKasaRefund(kasaCreds.apiKey, {
         paymentId: payment.KasaPaymentId,
         amount: body.amount ? pesosToCentavos(body.amount) : undefined,
         reason: body.reason,

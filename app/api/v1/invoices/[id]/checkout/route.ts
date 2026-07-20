@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getCompanyId } from "@/lib/session";
-import { buildKasaCheckoutUrl, pesosToCentavos } from "@/lib/kasa";
+import { buildKasaCheckoutUrl, getCompanyKasaCredentials, pesosToCentavos } from "@/lib/kasa";
 import { createPaymentReference } from "@/lib/invoices";
 
 export async function POST(
@@ -39,10 +39,11 @@ export async function POST(
         { status: 400 },
       );
 
-    if (!process.env.KASA_SECRET_KEY || !process.env.KASA_BASE_URL)
+    const kasaCreds = await getCompanyKasaCredentials(companyId);
+    if (!kasaCreds)
       return NextResponse.json(
-        { error: "Kasa is not configured (KASA_BASE_URL / KASA_SECRET_KEY)" },
-        { status: 500 },
+        { error: "Connect your Kasa account from Settings > Kasa Payments first" },
+        { status: 400 },
       );
 
     const reference = await createPaymentReference(Number(id));
@@ -56,6 +57,7 @@ export async function POST(
       amountCentavos: pesosToCentavos(balance),
       description: `Invoice #${id} — ${row.companyName}`,
       returnUrl: returnUrl.toString(),
+      merchantSlug: kasaCreds.merchantSlug,
     });
 
     return NextResponse.json({ url, balance });

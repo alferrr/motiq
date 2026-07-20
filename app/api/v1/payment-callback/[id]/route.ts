@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, withTransaction } from "@/lib/db";
-import { retrieveKasaPayment, KASA_PROVIDER_LABEL, centavosToPesos } from "@/lib/kasa";
+import { retrieveKasaPayment, getCompanyKasaCredentials, KASA_PROVIDER_LABEL, centavosToPesos } from "@/lib/kasa";
 import { recomputeInvoiceStatus } from "@/lib/invoices";
 import { sendEmail } from "@/lib/email";
 import { paymentReceiptEmail } from "@/lib/emailTemplates";
@@ -27,13 +27,21 @@ export async function GET(
     // unrelated customer's own payment) could be replayed against any
     // invoice URL to mark it paid
     const [[invoice]]: any = await pool.query(
-      `SELECT Invoice_ID, PaymentReference FROM Invoice WHERE Invoice_ID = ? LIMIT 1`,
+      `SELECT i.Invoice_ID, i.PaymentReference, c.Company_ID
+       FROM Invoice i
+       JOIN RepairJob rj ON rj.Job_ID = i.Job_ID
+       JOIN Vehicle  v  ON v.Vehicle_ID = rj.Vehicle_ID
+       JOIN Customer c  ON c.Customer_ID = v.Customer_ID
+       WHERE i.Invoice_ID = ? LIMIT 1`,
       [id],
     );
     if (!invoice || !invoice.PaymentReference || invoice.PaymentReference !== ref)
       return statusPage("error");
 
-    const payment = await retrieveKasaPayment(paymentId);
+    const kasaCreds = await getCompanyKasaCredentials(invoice.Company_ID);
+    if (!kasaCreds) return statusPage("error");
+
+    const payment = await retrieveKasaPayment(kasaCreds.apiKey, paymentId);
 
     let wasAlreadySucceeded = false;
     let result!: Awaited<ReturnType<typeof recomputeInvoiceStatus>>;
