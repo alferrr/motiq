@@ -25,6 +25,12 @@ const PUBLIC_PATHS = [
 // the owner-only landing-page CMS, which isn't a tenant-scoped concern
 const OWNER_PATHS = ["/content", "/api/v1/content"];
 
+// self-service endpoints that live under an otherwise role-restricted
+// prefix (e.g. "/api/v1/users" is Admin-only) but must stay reachable by
+// any authenticated role — checked before the prefix match below so a
+// startsWith("/api/v1/users") doesn't also catch "/api/v1/users/me"
+const ROLE_PATH_EXEMPT = ["/api/v1/users/me"];
+
 const ROLE_PATHS: Record<string, string[]> = {
   // Admin only
   "/users": ["Admin"],
@@ -66,12 +72,17 @@ export async function proxy(request: NextRequest) {
   }
 
   // role-based path guard
-  for (const [path, roles] of Object.entries(ROLE_PATHS)) {
-    if (pathname.startsWith(path) && !roles.includes(payload.role)) {
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const isRoleExempt = ROLE_PATH_EXEMPT.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+  if (!isRoleExempt) {
+    for (const [path, roles] of Object.entries(ROLE_PATHS)) {
+      if (pathname.startsWith(path) && !roles.includes(payload.role)) {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        return NextResponse.redirect(new URL("/dashboard", request.url));
       }
-      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 

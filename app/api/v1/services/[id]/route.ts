@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import { getCompanyId } from "@/lib/session";
+import { getSession } from "@/lib/session";
 import { z } from "zod";
 
 const UpdateSchema = z.object({
@@ -23,9 +23,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
 
     const body = UpdateSchema.parse(await request.json());
     const fields = Object.entries(body).filter(([, v]) => v !== undefined);
@@ -62,9 +65,26 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
+
+    const [[{ usageCount }]]: any = await pool.query(
+      `SELECT COUNT(*) AS usageCount FROM JobService js
+       JOIN ServiceCatalog sc ON sc.Service_ID = js.Service_ID
+       WHERE js.Service_ID = ? AND sc.Company_ID = ?`,
+      [id, companyId],
+    );
+    if (usageCount > 0)
+      return NextResponse.json(
+        {
+          error: `This service is used on ${usageCount} job order${usageCount === 1 ? "" : "s"} and can't be deleted.`,
+        },
+        { status: 400 },
+      );
 
     await pool.query(
       "DELETE FROM ServiceCatalog WHERE Service_ID = ? AND Company_ID = ?",

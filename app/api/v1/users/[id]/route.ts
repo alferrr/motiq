@@ -28,6 +28,19 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = UpdateSchema.parse(await request.json());
+
+    // also doubles as an ownership check — every write below (including the
+    // Mechanic sub-table, which has no Company_ID of its own) trusts `id`
+    // belongs to this company only because this confirmed it first
+    const [[existing]]: any = await conn.query(
+      "SELECT User_ID FROM User WHERE User_ID = ? AND Company_ID = ? LIMIT 1",
+      [id, auth.companyId],
+    );
+    if (!existing) {
+      conn.release();
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     await conn.beginTransaction();
 
     const fieldMap: Record<string, string> = {
@@ -129,10 +142,12 @@ export async function DELETE(
         { status: 400 },
       );
 
-    await pool.query("DELETE FROM User WHERE User_ID = ? AND Company_ID = ?", [
-      id,
-      auth.companyId,
-    ]);
+    const [result]: any = await pool.query(
+      "DELETE FROM User WHERE User_ID = ? AND Company_ID = ?",
+      [id, auth.companyId],
+    );
+    if (result.affectedRows === 0)
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     return NextResponse.json({ message: "User deleted" });
   } catch (err) {
     console.error(err);

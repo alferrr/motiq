@@ -339,6 +339,30 @@ export function paymentReceiptEmail(
   };
 }
 
+export function companyRegisteredEmail(
+  opts: CompanyInfo & {
+    adminName: string;
+    companyId: string;
+  },
+) {
+  return {
+    subject: `Welcome to Motiq — Your Company ID`,
+    html: shell({
+      ...opts,
+      heading: "Welcome to Motiq",
+      subheading: `${opts.companyName} is ready to go`,
+      greetingName: opts.adminName,
+      bodyText:
+        "Your garage has been registered on Motiq. You and your team will need the Company ID below to sign in — keep it somewhere safe.",
+      detailsRows: row("Company ID", escapeHtml(opts.companyId), true),
+      notice: {
+        title: "Keep this ID safe",
+        text: "Anyone signing in to your garage's account — Front Desk staff and mechanics included — will need this Company ID along with their own username and password.",
+      },
+    }),
+  };
+}
+
 export function passwordResetEmail(
   opts: CompanyInfo & {
     userName: string;

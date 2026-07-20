@@ -281,6 +281,7 @@ function AppointmentDrawerContent({
   appt,
   onStatusChange,
   onDelete,
+  canEdit,
   dark,
   text,
   muted,
@@ -288,6 +289,7 @@ function AppointmentDrawerContent({
   appt: Appointment;
   onStatusChange: (id: number, status: string) => void;
   onDelete: (id: number) => void;
+  canEdit: boolean;
   dark: boolean;
   text: string;
   muted: string;
@@ -346,7 +348,7 @@ function AppointmentDrawerContent({
         </div>
       )}
 
-      {appt.Status === "Scheduled" && (
+      {canEdit && appt.Status === "Scheduled" && (
         <div className="flex gap-2">
           <button
             onClick={() => onStatusChange(appt.Appointment_ID, "Completed")}
@@ -364,13 +366,15 @@ function AppointmentDrawerContent({
         </div>
       )}
 
-      <button
-        onClick={() => onDelete(appt.Appointment_ID)}
-        className={`w-full py-2 rounded-xl border text-xs font-medium transition-colors
-          ${dark ? "border-white/10 text-gray-400 hover:text-red-400" : "border-gray-200 text-gray-500 hover:text-red-500"}`}
-      >
-        Delete Appointment
-      </button>
+      {canEdit && (
+        <button
+          onClick={() => onDelete(appt.Appointment_ID)}
+          className={`w-full py-2 rounded-xl border text-xs font-medium transition-colors
+            ${dark ? "border-white/10 text-gray-400 hover:text-red-400" : "border-gray-200 text-gray-500 hover:text-red-500"}`}
+        >
+          Delete Appointment
+        </button>
+      )}
     </div>
   );
 }
@@ -1073,6 +1077,7 @@ export default function AppointmentsPage() {
               setDeleteTarget(id);
               setDrawerAppt(null);
             }}
+            canEdit={canAdd}
             dark={dark}
             text={text}
             muted={muted}

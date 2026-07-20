@@ -275,6 +275,7 @@ function VehicleDrawerContent({
   vehicleId,
   onEdit,
   onDelete,
+  canEdit,
   dark,
   text,
   muted,
@@ -285,6 +286,7 @@ function VehicleDrawerContent({
   vehicleId: number;
   onEdit: (v: VehicleDetail["vehicle"]) => void;
   onDelete: (id: number) => void;
+  canEdit: boolean;
   dark: boolean;
   text: string;
   muted: string;
@@ -365,21 +367,23 @@ function VehicleDrawerContent({
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => onEdit(detail.vehicle)}
-            className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-colors
-              ${dark ? "border-white/10 text-gray-300 hover:text-white" : "border-gray-200 text-gray-600 hover:text-gray-900"}`}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => onDelete(detail.vehicle.Vehicle_ID)}
-            className="flex-1 py-2 rounded-xl text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
-          >
-            Delete
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEdit(detail.vehicle)}
+              className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-colors
+                ${dark ? "border-white/10 text-gray-300 hover:text-white" : "border-gray-200 text-gray-600 hover:text-gray-900"}`}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => onDelete(detail.vehicle.Vehicle_ID)}
+              className="flex-1 py-2 rounded-xl text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
       <div className={`border-t ${border}`}>
@@ -884,6 +888,7 @@ function VehiclesPageInner() {
         {drawerTarget !== null && (
           <VehicleDrawerContent
             vehicleId={drawerTarget}
+            canEdit={canAdd}
             onEdit={(v) => {
               setEditTarget(v);
               setDrawerTarget(null);

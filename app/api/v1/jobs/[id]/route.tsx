@@ -447,7 +447,15 @@ export async function DELETE(
       [id, companyId],
     );
     return NextResponse.json({ message: "Job deleted" });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "ER_ROW_IS_REFERENCED_2" || err?.errno === 1451)
+      return NextResponse.json(
+        {
+          error:
+            "This job order has a paid invoice on record and can't be deleted.",
+        },
+        { status: 400 },
+      );
     console.error(err);
     return NextResponse.json(
       { error: "Internal Server Error" },

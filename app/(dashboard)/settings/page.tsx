@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import axios from "axios";
 import PageHeader from "@/components/shared/PageHeader";
-import { FaMoon, FaSun, FaCheck, FaLink, FaCheckCircle } from "react-icons/fa";
+import { FaMoon, FaSun, FaCheck, FaLink, FaCheckCircle, FaDownload } from "react-icons/fa";
 
 type Company = {
   Name: string;
@@ -47,6 +47,7 @@ const TABS = [
   { id: "appearance", label: "Appearance" },
   { id: "company", label: "Company Profile" },
   { id: "kasa", label: "Kasa Payments" },
+  { id: "export", label: "Export Data" },
   { id: "account", label: "Your Account" },
 ] as const;
 
@@ -73,7 +74,9 @@ export default function SettingsPage() {
   const isAdmin = userRole === "Admin";
 
   const [activeTab, setActiveTab] = useState<TabId>("appearance");
-  const visibleTabs = TABS.filter((t) => t.id !== "kasa" || isAdmin);
+  const visibleTabs = TABS.filter(
+    (t) => (t.id !== "kasa" && t.id !== "export") || isAdmin,
+  );
 
   const innerBg = dark ? "bg-[#0d0f13]" : "bg-[#f8f9fb]";
   const card = dark ? "bg-[#111318] border-white/5" : "bg-white border-gray-100";
@@ -97,37 +100,78 @@ export default function SettingsPage() {
   const [kasaLoading, setKasaLoading] = useState(true);
   const [kasaBusy, setKasaBusy] = useState(false);
   const [kasaMsg, setKasaMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [secretKeyInput, setSecretKeyInput] = useState("");
 
-  const fetchKasaStatus = () =>
-    axios
-      .get("/api/v1/company/kasa")
-      .then((res) => setKasaStatus(res.data))
-      .catch(() => {})
-      .finally(() => setKasaLoading(false));
-
-  const connectKasa = async () => {
-    if (!secretKeyInput.trim()) return;
-    setKasaBusy(true);
-    setKasaMsg(null);
+  const fetchKasaStatus = async (): Promise<KasaStatus | null> => {
     try {
-      const res = await axios.post("/api/v1/company/kasa", {
-        secretKey: secretKeyInput.trim(),
-      });
-      setSecretKeyInput("");
-      setKasaMsg({
-        type: "ok",
-        text: `Connected to ${res.data.merchantName} (${res.data.environment}).`,
-      });
-      await fetchKasaStatus();
-    } catch (err: any) {
+      const res = await axios.get("/api/v1/company/kasa");
+      setKasaStatus(res.data);
+      return res.data;
+    } catch {
+      return null;
+    } finally {
+      setKasaLoading(false);
+    }
+  };
+
+  const kasaPollRef = useRef<number | null>(null);
+  const clearKasaPoll = () => {
+    if (kasaPollRef.current !== null) {
+      window.clearInterval(kasaPollRef.current);
+      kasaPollRef.current = null;
+    }
+  };
+
+  const signInWithKasa = () => {
+    setKasaMsg(null);
+    // Kasa's consent card alone is ~570px tall; window.open's height budget
+    // also has to cover the browser's own popup chrome (title bar, etc.),
+    // so a tight value here can clip the Authorize button below the fold
+    // with no obvious scrollbar — comfortably overshoot instead.
+    const width = 520;
+    const height = 900;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    const popup = window.open(
+      "/api/v1/company/kasa/oauth/start",
+      "kasa-oauth",
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`,
+    );
+    if (!popup) {
       setKasaMsg({
         type: "err",
-        text: err.response?.data?.error ?? "Failed to connect Kasa account.",
+        text: "Please allow popups for this site to sign in with Kasa.",
       });
-    } finally {
-      setKasaBusy(false);
+      return;
     }
+    setKasaBusy(true);
+    // rather than have the popup's closing page postMessage the result back
+    // (window.opener isn't reliably preserved across the cross-origin round
+    // trip through Kasa's own domain and back), just poll for the popup
+    // closing and re-check the real connection status from the server —
+    // works whether the admin finished, cancelled, or just closed it
+    kasaPollRef.current = window.setInterval(() => {
+      if (popup.closed) {
+        clearKasaPoll();
+        setKasaBusy(false);
+        fetchKasaStatus().then((status) => {
+          if (status?.connected) {
+            setKasaMsg({ type: "ok", text: "Kasa account connected." });
+            return;
+          }
+          // the popup's own error message can close before it's readable,
+          // so the callback route also leaves the specific reason here
+          const match = document.cookie.match(/(?:^|; )kasa_oauth_error=([^;]*)/);
+          const reason = match ? decodeURIComponent(match[1]) : null;
+          document.cookie = "kasa_oauth_error=; Max-Age=0; path=/";
+          setKasaMsg({
+            type: "err",
+            text: reason
+              ? `Kasa sign-in failed: ${reason}`
+              : "Kasa sign-in was not completed.",
+          });
+        });
+      }
+    }, 500);
   };
 
   const disconnectKasa = async () => {
@@ -144,6 +188,38 @@ export default function SettingsPage() {
       });
     } finally {
       setKasaBusy(false);
+    }
+  };
+
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportMsg, setExportMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const exportData = async () => {
+    setExportBusy(true);
+    setExportMsg(null);
+    try {
+      const res = await axios.get("/api/v1/company/export", {
+        responseType: "blob",
+      });
+      const disposition = res.headers["content-disposition"] as string | undefined;
+      const match = disposition?.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? "motiq-export.zip";
+
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setExportMsg({ type: "ok", text: "Export downloaded." });
+    } catch (err: any) {
+      setExportMsg({
+        type: "err",
+        text: err.response?.data?.error ?? "Failed to export data.",
+      });
+    } finally {
+      setExportBusy(false);
     }
   };
 
@@ -487,34 +563,53 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   <>
-                    <Field label="Kasa Secret Key">
-                      <input
-                        className={`${inputCls} font-mono`}
-                        placeholder="sk_sandbox_… or sk_live_…"
-                        value={secretKeyInput}
-                        onChange={(e) => setSecretKeyInput(e.target.value)}
-                      />
-                    </Field>
                     <p className={`text-[11px] ${muted}`}>
-                      Find this under your Kasa Dashboard&apos;s API Keys page.
-                      Only the secret key is stored, encrypted, and never
-                      shown again in full.
+                      A Kasa sign-in window will open where you approve
+                      access — your Kasa password and secret key are never
+                      entered into Motiq.
                     </p>
                     <div className="flex justify-end">
                       <button
-                        onClick={connectKasa}
-                        disabled={kasaBusy || !secretKeyInput.trim()}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-60"
+                        onClick={signInWithKasa}
+                        disabled={kasaBusy}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                         style={{ backgroundColor: primaryColor }}
                       >
                         <FaLink size={11} />
-                        {kasaBusy ? "Connecting…" : "Connect Kasa"}
+                        {kasaBusy ? "Waiting for Kasa…" : "Sign in with Kasa"}
                       </button>
                     </div>
                   </>
                 )}
               </>
             )
+          )}
+
+          {activeTab === "export" && isAdmin && (
+            <>
+              <p className={`text-xs ${muted}`}>
+                Download every record your garage owns — customers, vehicles,
+                job orders, invoices, payments, appointments, and staff — as
+                plain CSV files in a single ZIP. Opens directly in Excel or
+                Google Sheets, so your data is never locked in.
+              </p>
+              {exportMsg && (
+                <p className={`text-xs ${exportMsg.type === "ok" ? "text-emerald-500" : "text-red-400"}`}>
+                  {exportMsg.text}
+                </p>
+              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={exportData}
+                  disabled={exportBusy}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <FaDownload size={11} />
+                  {exportBusy ? "Preparing export…" : "Export Data"}
+                </button>
+              </div>
+            </>
           )}
 
           {activeTab === "account" &&

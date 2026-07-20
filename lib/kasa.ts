@@ -1,6 +1,6 @@
 import axios from "axios";
 import { pool } from "@/lib/db";
-import { decryptSecret } from "@/lib/crypto";
+import { decryptSecret, encryptSecret } from "@/lib/crypto";
 
 export type KasaProvider = "gcash" | "maya" | "qr_ph" | "card" | "bank_transfer";
 
@@ -84,6 +84,41 @@ function kasaClient(apiKey: string) {
 export async function getKasaMerchant(apiKey: string): Promise<KasaMerchant> {
   const { data } = await kasaClient(apiKey).get("/api/v1/merchant");
   return data;
+}
+
+export type KasaConnectResult =
+  | { ok: true; merchant: KasaMerchant }
+  | { ok: false; reason: "invalid_key" }
+  | { ok: false; reason: "unreachable" };
+
+// Validates a Kasa secret key (via the whoami endpoint) and, if valid,
+// encrypts and persists it as the company's linked Kasa account. Shared by
+// the manual "paste a key" connect route and the OAuth callback — both end
+// up with a raw secret key that needs the exact same validate+store step.
+export async function connectCompanyKasaAccount(
+  companyId: string,
+  secretKey: string,
+): Promise<KasaConnectResult> {
+  let merchant: KasaMerchant;
+  try {
+    merchant = await getKasaMerchant(secretKey);
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 401)
+      return { ok: false, reason: "invalid_key" };
+    console.error("Kasa merchant lookup failed:", err);
+    return { ok: false, reason: "unreachable" };
+  }
+
+  const encrypted = encryptSecret(secretKey);
+  await pool.query(
+    `UPDATE Company
+     SET KasaSecretKey = ?, KasaMerchantSlug = ?, KasaMerchantName = ?,
+         KasaEnvironment = ?, KasaConnectedAt = NOW()
+     WHERE Company_ID = ?`,
+    [encrypted, merchant.slug, merchant.name, merchant.environment, companyId],
+  );
+
+  return { ok: true, merchant };
 }
 
 export async function retrieveKasaPayment(

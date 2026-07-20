@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import axios from "axios";
 import PageHeader from "@/components/shared/PageHeader";
-import { FaArrowUp } from "react-icons/fa";
+import { FaArrowUp, FaDownload } from "react-icons/fa";
 import {
   AreaChart,
   Area,
@@ -128,6 +128,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [range, setRange] = useState<Range>("6m");
+  const [exportBusy, setExportBusy] = useState(false);
 
   const innerBg = dark ? "bg-[#0d0f13]" : "bg-[#f8f9fb]";
   const card = dark
@@ -158,6 +159,31 @@ export default function ReportsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const exportReport = async () => {
+    setExportBusy(true);
+    setError("");
+    try {
+      const res = await axios.get("/api/v1/reports/export", {
+        params: { range },
+        responseType: "blob",
+      });
+      const disposition = res.headers["content-disposition"] as string | undefined;
+      const match = disposition?.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? "motiq-report.zip";
+
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Failed to export report.");
+    } finally {
+      setExportBusy(false);
+    }
+  };
 
   const revenueData = (data?.revenueOverTime ?? []).map((d) => ({
     label: d.label,
@@ -223,7 +249,18 @@ export default function ReportsPage() {
               Performance overview for {RANGE_LABELS[range].toLowerCase()}
             </p>
           </div>
-          <RangeToggle />
+          <div className="flex items-center gap-3">
+            <RangeToggle />
+            <button
+              onClick={exportReport}
+              disabled={exportBusy || loading}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-colors disabled:opacity-60
+                ${dark ? "border-white/10 text-gray-300 hover:text-white" : "border-gray-200 text-gray-600 hover:text-gray-900"}`}
+            >
+              <FaDownload size={10} />
+              {exportBusy ? "Exporting…" : "Export"}
+            </button>
+          </div>
         </div>
 
         <div

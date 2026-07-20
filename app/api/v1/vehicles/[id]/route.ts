@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import { getCompanyId } from "@/lib/session";
+import { getCompanyId, getSession } from "@/lib/session";
 import { z } from "zod";
 
 const UpdateSchema = z.object({
@@ -53,8 +53,7 @@ export async function GET(
        JOIN Mechanic m ON m.Mechanic_ID = rj.Mechanic_ID
        JOIN User u ON u.User_ID = m.User_ID
        WHERE rj.Vehicle_ID = ?
-       ORDER BY rj.JobDate DESC
-       LIMIT 10`,
+       ORDER BY rj.JobDate DESC`,
       [id],
     );
 
@@ -74,9 +73,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
 
     const body = UpdateSchema.parse(await request.json());
     const fields = Object.entries(body).filter(([, v]) => v !== undefined);
@@ -115,9 +117,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
 
     await pool.query(
       `DELETE v FROM Vehicle v
@@ -127,7 +132,15 @@ export async function DELETE(
     );
 
     return NextResponse.json({ message: "Vehicle deleted" });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "ER_ROW_IS_REFERENCED_2" || err?.errno === 1451)
+      return NextResponse.json(
+        {
+          error:
+            "This vehicle has paid invoices on record and can't be deleted.",
+        },
+        { status: 400 },
+      );
     console.error(err);
     return NextResponse.json(
       { error: "Internal Server Error" },

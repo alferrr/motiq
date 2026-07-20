@@ -46,8 +46,7 @@ export async function GET(
        JOIN Mechanic m ON m.Mechanic_ID = rj.Mechanic_ID
        JOIN User     u ON u.User_ID     = m.User_ID
        WHERE v.Customer_ID = ?
-       ORDER BY rj.JobDate DESC
-       LIMIT 10`,
+       ORDER BY rj.JobDate DESC`,
       [id],
     );
 
@@ -123,7 +122,15 @@ export async function DELETE(
     );
 
     return NextResponse.json({ message: "Customer deleted" });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "ER_ROW_IS_REFERENCED_2" || err?.errno === 1451)
+      return NextResponse.json(
+        {
+          error:
+            "This customer has paid invoices on record and can't be deleted.",
+        },
+        { status: 400 },
+      );
     console.error(err);
     return NextResponse.json(
       { error: "Internal Server Error" },

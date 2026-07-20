@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { z } from "zod";
-import axios from "axios";
-import { getKasaMerchant } from "@/lib/kasa";
-import { encryptSecret } from "@/lib/crypto";
+import { connectCompanyKasaAccount } from "@/lib/kasa";
 
 const ConnectSchema = z.object({
   secretKey: z
@@ -59,36 +57,24 @@ export async function POST(request: NextRequest) {
 
     const body = ConnectSchema.parse(await request.json());
 
-    let merchant;
-    try {
-      merchant = await getKasaMerchant(body.secretKey);
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401)
+    const result = await connectCompanyKasaAccount(auth.companyId, body.secretKey);
+    if (!result.ok) {
+      if (result.reason === "invalid_key")
         return NextResponse.json(
           { error: "Invalid Kasa secret key" },
           { status: 400 },
         );
-      console.error("Kasa merchant lookup failed:", err);
       return NextResponse.json(
         { error: "Could not reach Kasa — check KASA_BASE_URL and try again" },
         { status: 502 },
       );
     }
 
-    const encrypted = encryptSecret(body.secretKey);
-    await pool.query(
-      `UPDATE Company
-       SET KasaSecretKey = ?, KasaMerchantSlug = ?, KasaMerchantName = ?,
-           KasaEnvironment = ?, KasaConnectedAt = NOW()
-       WHERE Company_ID = ?`,
-      [encrypted, merchant.slug, merchant.name, merchant.environment, auth.companyId],
-    );
-
     return NextResponse.json({
       message: "Kasa account connected",
-      merchantSlug: merchant.slug,
-      merchantName: merchant.name,
-      environment: merchant.environment,
+      merchantSlug: result.merchant.slug,
+      merchantName: result.merchant.name,
+      environment: result.merchant.environment,
     });
   } catch (err) {
     if (err instanceof z.ZodError)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import axios from "axios";
 import { FaArrowUp } from "react-icons/fa";
@@ -224,21 +224,34 @@ function AdminDashboard({
 }: any) {
   const [data, setData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState("");
   const [range, setRange] = useState<"Days" | "Week" | "Month">("Month");
+  const isFirstFetch = useRef(true);
 
   useEffect(() => {
+    if (!isFirstFetch.current) setChartLoading(true);
     axios
-      .get("/api/v1/dashboard")
+      .get("/api/v1/dashboard", { params: { range: range.toLowerCase() } })
       .then((res) => setData(res.data))
       .catch(() => setError("Failed to load data."))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        isFirstFetch.current = false;
+        setLoading(false);
+        setChartLoading(false);
+      });
+  }, [range]);
 
   const chartData = (data?.salesChart ?? []).map((d) => ({
     month: d.month,
     Revenue: Number(d.revenue),
   }));
+  const periodTotal = chartData.reduce((sum, d) => sum + d.Revenue, 0);
+  const periodLabel: Record<typeof range, string> = {
+    Days: "last 14 days",
+    Week: "last 8 weeks",
+    Month: "last 6 months",
+  };
 
   const gridColor = dark ? "#ffffff08" : "#f3f4f6";
   const axisColor = dark ? "#4b5563" : "#9ca3af";
@@ -333,11 +346,10 @@ function AdminDashboard({
             className="text-xs flex items-center gap-1"
             style={{ color: primary }}
           >
-            <FaArrowUp size={9} /> {fmt(data?.stats.monthlyRevenue ?? 0)} this
-            month
+            <FaArrowUp size={9} /> {fmt(periodTotal)} {periodLabel[range]}
           </span>
         </div>
-        {loading ? (
+        {loading || chartLoading ? (
           <Skeleton className="h-56 w-full" />
         ) : !chartData.length ? (
           <div className="h-56 flex items-center justify-center">

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import { getCompanyId } from "@/lib/session";
+import { getCompanyId, getSession } from "@/lib/session";
 import { z } from "zod";
 
 const StatusSchema = z.object({
@@ -71,9 +71,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
 
     const body = StatusSchema.parse(await request.json());
 
@@ -108,9 +111,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const companyId = await getCompanyId(request);
-    if (!companyId)
+    const session = await getSession(request);
+    if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role === "Mechanic")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const companyId = session.companyId;
 
     const [result]: any = await pool.query(
       `DELETE FROM Appointment WHERE Appointment_ID = ? AND Company_ID = ?`,

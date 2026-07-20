@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { sendEmail } from "@/lib/email";
+import { companyRegisteredEmail } from "@/lib/emailTemplates";
 
 const RegisterSchema = z.object({
   company: z.object({
@@ -159,6 +161,17 @@ export async function POST(request: NextRequest) {
     );
 
     await conn.commit();
+
+    const { subject, html } = companyRegisteredEmail({
+      companyName: company.garageName,
+      themeColor: company.themeColor,
+      companyEmail: company.email,
+      companyContact: company.contactNumber,
+      companyAddress: company.address,
+      adminName: admin.fullName,
+      companyId,
+    });
+    await sendEmail({ to: admin.email, subject, html });
 
     return NextResponse.json(
       {
